@@ -15,6 +15,9 @@ def createNewDB():
     # TODO: idea to use a dictionary as the structure to create this DB
     pass
 
+def extractLaw():
+    pass
+
 def urlToText(url):
     webUrl = urllib.request.urlopen("https://www.nevo.co.il/psika_html/elyon/05006450-o08-e.htm")
     html = webUrl.read()
