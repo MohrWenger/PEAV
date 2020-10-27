@@ -4,18 +4,24 @@ import urllib.request
 
 def extractWordAfterKeyword(text, word):
     keywordIndex = text.find(word)
+    if keywordIndex == -1:
+        return -1
     targetStartIndex = keywordIndex + len(word) + 1  # plus one because of space
     spaceAfterEndIndex = text.find(" ", targetStartIndex)
     return text[targetStartIndex:spaceAfterEndIndex]
 
-
+##############################PARAMETERS#######################################
 def accusedName(text):
     return extractWordAfterKeyword(text, "נ'")
+
+def compensation(text):
+    return extractWordAfterKeyword(text, "סך של")
 
 
 def ExtractParameters(text, db):
     # think of a good structure to call each function of extraction and put the output in the correct column
     print(accusedName(text))
+    print(compensation(text))
 
 
 def createNewDB():
@@ -44,6 +50,7 @@ def urlToText(url):
     text = '\n'.join(chunk for chunk in chunks if chunk)
     # print(text)
     return text
+
 
 """
 This function receives a path with many verdicts (presumably in word or html format), and uses the code to create a
