@@ -12,20 +12,25 @@ def extractWordAfterKeyword(text, word):
 def accusedName(text):
     return extractWordAfterKeyword(text, "נ'")
 
+def extractLaw(text):
+    all_charges = []
+    for chrg in CHARGES:
+        if text.find(chrg) != -1:
+            all_charges.append(chrg)
+    print("section = ",all_charges)
 
 def ExtractParameters(text, db):
+    #TODO : figure out how to limit the search area (ideas - number of lines, not in entioned laws, before discausion etc...)
     # think of a good structure to call each function of extraction and put the output in the correct column
     print(accusedName(text))
+    extractLaw(text)
+
 
 
 def createNewDB():
     # create a xls file with the right columns as the parameters
     # TODO: idea to use a dictionary as the structure to create this DB
     return dict()
-
-
-def extractLaw():
-    pass
 
 def urlToText(url):
     webUrl = urllib.request.urlopen(url)
@@ -63,10 +68,12 @@ def fromVerdictsToDB(urls):
 
 urls = ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06000511-a.htm",
-        "https://www.nevo.co.il/psika_html/mechozi/ME-09-02-10574-380.htm",
+        # "https://www.nevo.co.il/psika_html/mechozi/ME-09-02-10574-380.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06007004-660.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06020001.htm",
         "https://www.nevo.co.il/psika_html/shalom/s01003122-438.htm",
         "https://www.nevo.co.il/psika_html/shalom/s981928.htm"]
+
+CHARGES = ['345','346','347','348','349','350','351']
 
 fromVerdictsToDB(urls)
