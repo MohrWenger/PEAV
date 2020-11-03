@@ -44,6 +44,12 @@ def ExtractParameters(text, db):
     print(compensation(text))
     print(courtArea(text))
 
+def extractLaw(text):
+    all_charges = []
+    for chrg in CHARGES:
+        if text.find(chrg) != -1:
+            all_charges.append(chrg)
+    print("section = ",all_charges)
 
 def createNewDB():
     # create a xls file with the right columns as the parameters
