@@ -1,9 +1,17 @@
 from bs4 import BeautifulSoup
 import urllib.request
+import re
 
+def findBetweenParentheses(text):
+    targetStartIndex = text.find("(") + 1
+    parenthesisAfterEndIndex = text.find(")", targetStartIndex)
+    return text[targetStartIndex:parenthesisAfterEndIndex]
 
-def extractWordAfterKeyword(text, word):
-    keywordIndex = text.find(word)
+def extractWordAfterKeywords(text, words):
+    for word in words:
+        keywordIndex = text.find(word)
+        if keywordIndex != -1:
+            break
     if keywordIndex == -1:
         return -1
     targetStartIndex = keywordIndex + len(word) + 1  # plus one because of space
@@ -12,16 +20,22 @@ def extractWordAfterKeyword(text, word):
 
 ##############################PARAMETERS#######################################
 def accusedName(text):
-    return extractWordAfterKeyword(text, "נ'")
+    return extractWordAfterKeywords(text, ["נ'"])
 
-def compensation(text):
-    return extractWordAfterKeyword(text, "סך של")
+def compensation(text): # TODO: Sometimes extracts the כ- instead of the number
+    return extractWordAfterKeywords(text, ["סך של"])
 
+def courtArea(text):
+    # withParentheses = extractWordAfterKeywords(text, ["תפח", "תפ", "תפ״ח", "פ״ח"])
+    # print(withParentheses)
+    # return re.sub('[()]', '', withParentheses)
+    return findBetweenParentheses(text)
 
 def ExtractParameters(text, db):
     # think of a good structure to call each function of extraction and put the output in the correct column
     print(accusedName(text))
     print(compensation(text))
+    print(courtArea(text))
 
 
 def createNewDB():
@@ -62,7 +76,9 @@ def fromVerdictsToDB(urls):
         # for each file, call ExtractParameters
     for url in urls:
         text = urlToText(url)
+        print(url)
         ExtractParameters(text, db)
+        print("\n\n")
 
 
 urls = ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm",
@@ -71,6 +87,22 @@ urls = ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06007004-660.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06020001.htm",
         "https://www.nevo.co.il/psika_html/shalom/s01003122-438.htm",
-        "https://www.nevo.co.il/psika_html/shalom/s981928.htm"]
+        "https://www.nevo.co.il/psika_html/shalom/s981928.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/m011190a.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/m01000232.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/m99934.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/ME-12-01-13327-55.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/me-93-76-a.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/m01171.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/m011190a.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/ME-16-12-8398-11.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/m01000405-a.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/m011314.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/m00001039-148.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/m001129.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/me-93-76-b.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/m00000935-103.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/ME-98-4124-HK.htm"
+        ]
 
 fromVerdictsToDB(urls)
