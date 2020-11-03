@@ -22,14 +22,14 @@ def extractWordAfterKeywords(text, words):
 def accusedName(text):
     return extractWordAfterKeywords(text, ["נ'"])
 
-<<<<<<< HEAD
+
 def extractLaw(text):
     all_charges = []
     for chrg in CHARGES:
         if text.find(chrg) != -1:
             all_charges.append(chrg)
     print("section = ",all_charges)
-=======
+
 def compensation(text): # TODO: Sometimes extracts the כ- instead of the number
     return extractWordAfterKeywords(text, ["סך של"])
 
@@ -38,19 +38,14 @@ def courtArea(text):
     # print(withParentheses)
     # return re.sub('[()]', '', withParentheses)
     return findBetweenParentheses(text)
->>>>>>> master
 
 def ExtractParameters(text, db):
     #TODO : figure out how to limit the search area (ideas - number of lines, not in entioned laws, before discausion etc...)
     # think of a good structure to call each function of extraction and put the output in the correct column
     print(accusedName(text))
-<<<<<<< HEAD
     extractLaw(text)
-
-=======
     print(compensation(text))
     print(courtArea(text))
->>>>>>> master
 
 
 def createNewDB():
@@ -117,6 +112,7 @@ urls = ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm",
         "https://www.nevo.co.il/psika_html/mechozi/ME-98-4124-HK.htm"
         ]
 
+print("we are now masters of git")
 CHARGES = ['345','346','347','348','349','350','351']
 
 fromVerdictsToDB(urls)
