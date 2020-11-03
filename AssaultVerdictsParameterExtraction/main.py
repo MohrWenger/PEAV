@@ -78,6 +78,14 @@ def urlToText(url):
     return text
 
 
+def add_to_txt_db(url,text,court_type):
+    name_file = url.strip("https://www.nevo.co.il/psika_html/"+court_type+"/")
+    with open(
+            "C:\\Users\\oryiz\\PycharmProjects\\PEAV\\AssaultVerdictsParameterExtraction\\verdicts\\" + name_file + ".txt",
+            "w", encoding="utf-8") as newFile:
+        newFile.write(text)
+
+
 """
 This function receives a path with many verdicts (presumably in word or html format), and uses the code to create a
 database
@@ -90,16 +98,17 @@ def fromVerdictsToDB(urls):
         text = urlToText(url)
         print(url)  # as kind of a title
         ExtractParameters(text, db)
+        add_to_txt_db(url, text,"mechozi")
         print("\n\n")
 
 
-urls = ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm",
+urls = [#"https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06000511-a.htm",
         "https://www.nevo.co.il/psika_html/mechozi/ME-09-02-10574-380.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06007004-660.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06020001.htm",
-        "https://www.nevo.co.il/psika_html/shalom/s01003122-438.htm",
-        "https://www.nevo.co.il/psika_html/shalom/s981928.htm",
+        # "https://www.nevo.co.il/psika_html/shalom/s01003122-438.htm",
+        # "https://www.nevo.co.il/psika_html/shalom/s981928.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m011190a.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m01000232.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m99934.htm",
