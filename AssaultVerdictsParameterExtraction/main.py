@@ -70,7 +70,6 @@ urls = ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm",
         "https://www.nevo.co.il/psika_html/mechozi/ME-09-02-10574-380.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06007004-660.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06020001.htm",
-        "https://www.nevo.co.il/psika_html/shalom/s01003122-438.htm",
         "https://www.nevo.co.il/psika_html/shalom/s981928.htm"]
 
 fromVerdictsToDB(urls)
