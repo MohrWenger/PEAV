@@ -1,6 +1,11 @@
 from bs4 import BeautifulSoup
 import urllib.request
-import re
+
+
+def allTheTextAfterAWord(text, word):
+    targetStartIndex = text.find(word)
+    return text[targetStartIndex:]
+
 
 def findBetweenParentheses(text):
     targetStartIndex = text.find("(") + 1
@@ -19,24 +24,16 @@ def extractWordAfterKeywords(text, words):
     return text[targetStartIndex:spaceAfterEndIndex]
 
 ##############################PARAMETERS#######################################
+
 def accusedName(text):
     return extractWordAfterKeywords(text, ["נ'"])
 
 
-def extractLaw(text):
-    all_charges = []
-    for chrg in CHARGES:
-        if text.find(chrg) != -1:
-            all_charges.append(chrg)
-    print("section = ",all_charges)
-
-def compensation(text): # TODO: Sometimes extracts the כ- instead of the number
-    return extractWordAfterKeywords(text, ["סך של"])
+def compensation(text):  # TODO: in one instance finds the salary instead of compensation
+    # text = allTheTextAfterAWord(text, "סיכום") # TODO: not always a title of "summary"
+    return extractWordAfterKeywords(text, ["סך של כ-", "סך של"])
 
 def courtArea(text):
-    # withParentheses = extractWordAfterKeywords(text, ["תפח", "תפ", "תפ״ח", "פ״ח"])
-    # print(withParentheses)
-    # return re.sub('[()]', '', withParentheses)
     return findBetweenParentheses(text)
 
 def ExtractParameters(text, db):
@@ -85,14 +82,14 @@ def fromVerdictsToDB(urls):
         # for each file, call ExtractParameters
     for url in urls:
         text = urlToText(url)
-        print(url)
+        print(url)  # as kind of a title
         ExtractParameters(text, db)
         print("\n\n")
 
 
 urls = ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06000511-a.htm",
-        # "https://www.nevo.co.il/psika_html/mechozi/ME-09-02-10574-380.htm",
+        "https://www.nevo.co.il/psika_html/mechozi/ME-09-02-10574-380.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06007004-660.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06020001.htm",
         "https://www.nevo.co.il/psika_html/shalom/s01003122-438.htm",
