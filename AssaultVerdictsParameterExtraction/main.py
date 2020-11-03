@@ -1,6 +1,11 @@
 from bs4 import BeautifulSoup
 import urllib.request
-import re
+
+
+def allTheTextAfterAWord(text, word):
+    targetStartIndex = text.find(word)
+    return text[targetStartIndex:]
+
 
 def findBetweenParentheses(text):
     targetStartIndex = text.find("(") + 1
@@ -19,16 +24,15 @@ def extractWordAfterKeywords(text, words):
     return text[targetStartIndex:spaceAfterEndIndex]
 
 ##############################PARAMETERS#######################################
+
 def accusedName(text):
     return extractWordAfterKeywords(text, ["נ'"])
 
-def compensation(text): # TODO: Sometimes extracts the כ- instead of the number
-    return extractWordAfterKeywords(text, ["סך של"])
+def compensation(text): # TODO: in one instance finds the salary instead of compensation
+    # text = allTheTextAfterAWord(text, "סיכום") # TODO: not always a title of "summary"
+    return extractWordAfterKeywords(text, ["סך של כ-", "סך של"])
 
 def courtArea(text):
-    # withParentheses = extractWordAfterKeywords(text, ["תפח", "תפ", "תפ״ח", "פ״ח"])
-    # print(withParentheses)
-    # return re.sub('[()]', '', withParentheses)
     return findBetweenParentheses(text)
 
 def ExtractParameters(text, db):
@@ -66,19 +70,19 @@ def urlToText(url):
     return text
 
 
-"""
-This function receives a path with many verdicts (presumably in word or html format), and uses the code to create a
-database
-"""
 def fromVerdictsToDB(urls):
+    """
+    This function receives a path with many verdicts (presumably in word or html format), and uses the code to create a
+    database
+    """
     db = createNewDB()
     # go through files in a loop
         # for each file, call ExtractParameters
     for url in urls:
         text = urlToText(url)
-        print(url)
+        print(url)  # as kind of a title
         ExtractParameters(text, db)
-        print("\n\n")
+        print("\n")
 
 
 urls = ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm",
@@ -94,13 +98,11 @@ urls = ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm",
         "https://www.nevo.co.il/psika_html/mechozi/ME-12-01-13327-55.htm",
         "https://www.nevo.co.il/psika_html/mechozi/me-93-76-a.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m01171.htm",
-        "https://www.nevo.co.il/psika_html/mechozi/m011190a.htm",
         "https://www.nevo.co.il/psika_html/mechozi/ME-16-12-8398-11.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m01000405-a.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m011314.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m00001039-148.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m001129.htm",
-        "https://www.nevo.co.il/psika_html/mechozi/me-93-76-b.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m00000935-103.htm",
         "https://www.nevo.co.il/psika_html/mechozi/ME-98-4124-HK.htm"
         ]
