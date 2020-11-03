@@ -28,7 +28,8 @@ def extractWordAfterKeywords(text, words):
 def accusedName(text):
     return extractWordAfterKeywords(text, ["נ'"])
 
-def compensation(text): # TODO: in one instance finds the salary instead of compensation
+
+def compensation(text):  # TODO: in one instance finds the salary instead of compensation
     # text = allTheTextAfterAWord(text, "סיכום") # TODO: not always a title of "summary"
     return extractWordAfterKeywords(text, ["סך של כ-", "סך של"])
 
