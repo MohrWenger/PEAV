@@ -1,6 +1,8 @@
 from bs4 import BeautifulSoup
 import urllib.request
+import os
 
+VERDICTS_DIR = "C:\\Users\\oryiz\\PycharmProjects\\PEAV\\AssaultVerdictsParameterExtraction\\verdicts\\"
 
 def allTheTextAfterAWord(text, word):
     targetStartIndex = text.find(word)
@@ -80,8 +82,7 @@ def urlToText(url):
 
 def add_to_txt_db(url,text,court_type):
     name_file = url.strip("https://www.nevo.co.il/psika_html/"+court_type+"/")
-    with open(
-            "C:\\Users\\oryiz\\PycharmProjects\\PEAV\\AssaultVerdictsParameterExtraction\\verdicts\\" + name_file + ".txt",
+    with open(VERDICTS_DIR + name_file + ".txt",
             "w", encoding="utf-8") as newFile:
         newFile.write(text)
 
@@ -94,21 +95,31 @@ def fromVerdictsToDB(urls):
     db = createNewDB()
     # go through files in a loop
         # for each file, call ExtractParameters
-    for url in urls:
-        text = urlToText(url)
-        print(url)  # as kind of a title
-        ExtractParameters(text, db)
-        add_to_txt_db(url, text,"mechozi")
+    directory = VERDICTS_DIR               #text files eddition:
+    for filename in os.listdir(directory):
+        if filename.endswith(".txt"):
+            file_name = os.path.join(directory, filename)
+            text = open(file_name,"r",encoding="utf-8").read()
+            ExtractParameters(text, db)
+
+        else:
+            continue
+
+    # for url in urls:                       #html edition
+    #     text = urlToText(url)
+    #     print(url)  # as kind of a title
+    #     ExtractParameters(text, db)
+        # add_to_txt_db(url, text,"mechozi")
         print("\n\n")
 
 
-urls = [#"https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm",
+urls = ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06000511-a.htm",
         "https://www.nevo.co.il/psika_html/mechozi/ME-09-02-10574-380.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06007004-660.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m06020001.htm",
-        # "https://www.nevo.co.il/psika_html/shalom/s01003122-438.htm",
-        # "https://www.nevo.co.il/psika_html/shalom/s981928.htm",
+        "https://www.nevo.co.il/psika_html/shalom/s01003122-438.htm",
+        "https://www.nevo.co.il/psika_html/shalom/s981928.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m011190a.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m01000232.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m99934.htm",
