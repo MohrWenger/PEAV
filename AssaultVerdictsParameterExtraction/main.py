@@ -1,12 +1,13 @@
 from bs4 import BeautifulSoup
 import urllib.request
 import os
+import re
 
 VERDICTS_DIR = "C:\\Users\\oryiz\\PycharmProjects\\PEAV\\AssaultVerdictsParameterExtraction\\verdicts\\"
 
-def allTheTextAfterAWord(text, word):
+def allTheTextAfterAWord(text, word, untill = -1):
     targetStartIndex = text.find(word)
-    return text[targetStartIndex:]
+    return text[targetStartIndex:untill]
 
 
 def findBetweenParentheses(text):
@@ -46,12 +47,6 @@ def ExtractParameters(text, db):
     print(compensation(text))
     print(courtArea(text))
 
-def extractLaw(text):
-    all_charges = []
-    for chrg in CHARGES:
-        if text.find(chrg) != -1:
-            all_charges.append(chrg)
-    print("section = ",all_charges)
 
 def createNewDB():
     # create a xls file with the right columns as the parameters
@@ -79,6 +74,46 @@ def urlToText(url):
     # print(text)
     return text
 
+######################## mohr current working on ###########################################33
+
+def get_lines_after(text,word,amount,limit = 30):
+    """
+    This function returns the amount of lines after the line in which the word appeard
+    :param text:
+    :param word:
+    :param amount:
+    :return:
+    """
+    t_by_lines = text.splitlines()
+    start = 0
+    for line in range(len(t_by_lines)):
+        if re.search(word,t_by_lines[line]) != None:
+            start = line+3
+            break
+    relevant_lines = []
+    if start < limit:
+        for i in range(amount):
+            relevant_lines.append(t_by_lines[start+i])
+        # print("\n".join(relevant_lines))
+        return "\n".join(relevant_lines)
+    else:
+        return ""
+
+def extractLaw(text):
+    reg_word = "חקיקה שאוזכרה"
+    # reg_word = "פסק ה*דין"
+    relevant = get_lines_after(text,reg_word, 10)
+    all_charges = []
+    amount_appeard = []
+    line_appeadr =[] #TODO Deduce from the line all apeared in which is previuously mentioned
+    for chrg in CHARGES:
+        if relevant.find(chrg) != -1:
+            all_charges.append([chrg,text.count(chrg)])
+            amount_appeard.append(text.count(chrg))
+    print("section = ",all_charges)
+    # print("appeared: ", amount_appeard)
+    return all_charges
+
 
 def add_to_txt_db(url,text,court_type):
     name_file = url.strip("https://www.nevo.co.il/psika_html/"+court_type+"/")
@@ -93,6 +128,7 @@ database
 """
 def fromVerdictsToDB(urls):
     db = createNewDB()
+
     # go through files in a loop
         # for each file, call ExtractParameters
     directory = VERDICTS_DIR               #text files eddition:
@@ -100,6 +136,7 @@ def fromVerdictsToDB(urls):
         if filename.endswith(".txt"):
             file_name = os.path.join(directory, filename)
             text = open(file_name,"r",encoding="utf-8").read()
+            print("^^^ File is ",file_name," ^^^")
             ExtractParameters(text, db)
 
         else:
@@ -128,7 +165,6 @@ urls = ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m01171.htm",
         "https://www.nevo.co.il/psika_html/mechozi/ME-16-12-8398-11.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m01000405-a.htm",
-        "https://www.nevo.co.il/psika_html/mechozi/m011314.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m00001039-148.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m001129.htm",
         "https://www.nevo.co.il/psika_html/mechozi/m00000935-103.htm",
