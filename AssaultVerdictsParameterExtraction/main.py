@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 import urllib.request
-
+import hebpipe
 
 def allTheTextAfterAWord(text, word):
     targetStartIndex = text.find(word)
@@ -31,7 +31,7 @@ def accusedName(text):
 
 def compensation(text):  # TODO: in one instance finds the salary instead of compensation
     # text = allTheTextAfterAWord(text, "סיכום") # TODO: not always a title of "summary"
-    return extractWordAfterKeywords(text, ["סך של כ-", "סך של"])
+    return extractWordAfterKeywords(text, ["סך של כ-", "סך של"]) # TODO: sometimes there's only "סך"
 
 def courtArea(text):
     return findBetweenParentheses(text)
@@ -83,6 +83,7 @@ def fromVerdictsToDB(urls):
         text = urlToText(url)
         print(url)  # as kind of a title
         ExtractParameters(text, db)
+        hebpipe.heb_pipe.nlp(text)
         print("\n")
 
 
