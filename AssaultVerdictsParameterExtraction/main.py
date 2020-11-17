@@ -4,8 +4,12 @@ import urllib.request
 import os
 import re
 import string
+import matplotlib as plt
+import numpy as np
+from collections import Counter
 
-VERDICTS_DIR = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/verdicts/"
+
+VERDICTS_DIR = "verdicts/"
 
 #### CONVENTIONS
 # All the extraction functions RETURN the value at the end, which will then be submitted into the DB
@@ -35,6 +39,30 @@ def extractWordAfterKeywords(text, words):
     spaceAfterEndIndex = text.find(" ", targetStartIndex)
     return text[targetStartIndex:spaceAfterEndIndex]
 
+def get_lines_after(text, word, amount,startAfter, limit="eof"):
+    """
+    This function returns the amount of lines after the line in which the word appeard
+    :param text:
+    :param word:
+    :param amount:
+    :return:
+    """
+    t_by_lines = text.splitlines()
+    if limit == "eof":
+        limit = len(t_by_lines)
+    start = 0
+    for line in range(len(t_by_lines)):
+        if re.search(word, t_by_lines[line]):
+            start = line + startAfter
+            relevant_lines = []
+            if start < limit:
+                for i in range(amount):
+                    relevant_lines.append(t_by_lines[start + i])
+                # print("\n".join(relevant_lines))
+                return "\n".join(relevant_lines)
+            else:
+                return ""
+    return -1
 
 ##############################PARAMETERS#######################################
 
@@ -87,10 +115,11 @@ def extractParameters(text, db):
     # think of a good structure to call each function of extraction and put the output in the correct column
     # print(accusedName(text))
     # extractLaw(text)
-    # print(compensation(text))
-    # print(courtArea(text))
+    print("com[ = ",compensation(text))
+    print(courtArea(text))
     print(howManyLines(text))
     interestingWords(text)
+    return accusedName(text)
 
 
 def createNewDB():
@@ -122,34 +151,30 @@ def urlToText(url):
 
 
 #################### mohr current working on ###############################33
+def convert_str_to_int_dict(str_arr):
+        unique_vals = list(Counter(str_arr).keys())
+        print(unique_vals)
+        int_vals = np.arange(len(unique_vals))
+        new_dict = {unique_vals[i]: int_vals[i] for i in range(len(unique_vals))}
+        print(new_dict)
+        return  new_dict
 
 
-def get_lines_after(text, word, amount,startAfter, limit="eof"):
-    """
-    This function returns the amount of lines after the line in which the word appeard
-    :param text:
-    :param word:
-    :param amount:
-    :return:
-    """
-    t_by_lines = text.splitlines()
-    if limit == "eof":
-        limit = len(t_by_lines)
-    start = 0
-    for line in range(len(t_by_lines)):
-        if re.search(word, t_by_lines[line]):
-            start = line + startAfter
-            relevant_lines = []
-            if start < limit:
-                for i in range(amount):
-                    relevant_lines.append(t_by_lines[start + i])
-                # print("\n".join(relevant_lines))
-                return "\n".join(relevant_lines)
-            else:
-                return ""
-    return -1
-
-
+def generic_plot_func(x_data, y_data = None):
+    x_final_data = x_data
+    if type(x_data[0]) is str:
+        m_dict = convert_str_to_int_dict(x_data)
+        x_final_data = [m_dict[x_data[i]] for i in range(len(x_data))]
+    print("x_final_data = ",x_final_data)
+    #find years:
+    # all_yeras = Counter(y_data).keys()
+    # for yr in all_yeras:
+    #     count_by_years =
+    #
+    # for ftr,appr in Counter(x_data):
+    #     temp = y_data[]
+    #     plt.plot(x_final_data, )
+    pass
 
 def extractLaw(text):
     reg_word = "חקיקה שאוזכרה"
@@ -179,6 +204,7 @@ database
 """
 def fromVerdictsToDB(urls):
     db = createNewDB()
+    all_accused = []
 
     directory = VERDICTS_DIR               #text files eddition:
     for filename in os.listdir(directory):
@@ -186,8 +212,9 @@ def fromVerdictsToDB(urls):
             file_name = os.path.join(directory, filename)
             text = open(file_name, "r", encoding="utf-8").read()
             print("^^^ File is ", file_name, " ^^^")
-            extractParameters(text, db)
-
+            param1 = extractParameters(text, db)
+            all_accused.append(param1)
+            generic_plot_func(all_accused)
         else:
             continue
 
@@ -196,6 +223,14 @@ def fromVerdictsToDB(urls):
     #     print(url)  # as kind of a title
     #     ExtractParameters(text, db)
         # add_to_txt_db(url, text,"mechozi")
+
+        years = [1998, 2006, 2009, 2006, 2006, 2004, 1999, 2000, 2015, 1994, 2001, 2016, 2005, 2001, 2001, 2001, 2003]
+        comp = [-1, -1, -1, 10000, 3500, -1, -1, 7000, -1, -1, -1, 3000, -1, 170000, 75000, -1, -1, -1, -1]
+        places = ["שלום תל אביב-יפו", "מחוזי נצ'", "מחוזי מרכז",  "מחוזי י-ם", "שלום ירושלים", "פורסם בנבו, 10.10.1999",
+                  "מחוזי תל אביב-יפו", "מחוזי חיפה", "מחוזי באר שבע", "מחוזי נצרת" , "מחוזי ב\"ש", "מחוזי חיפה",
+                  "מחוזי נצרת", "מחוזי תל אביב-יפו", "מחוזי חיפה", "מחוזי תל אביב-יפו", "מחוזי תל אביב-יפו", "מחוזי באר שבע", "מחוזי תל אביב-יפו"]
+        generic_plot_func(places, years)
+
         print("\n\n")
 
 
