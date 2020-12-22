@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from collections import Counter
 import pandas as pd
-
+import datefinder
 
 VERDICTS_DIR = "verdicts/"
 
@@ -22,6 +22,8 @@ ACCUSED = "accused"
 ARCHA = "archa"
 JuDGE_NUM = ""
 VIRGINS = ""
+
+YEAR_REG = r"([1-3]{0,1}[0-9]\/[1-2]{0,1}[0-9]\/[1-2]{0,1}[0-9]{1,3}|[1-3]{0,1}[0-9]\.[1-2]{0,1}[0-9]\.[1-2]{0,1}[0-9]{1,3})"
 
 #### CONVENTIONS
 # All the extraction functions RETURN the value at the end, which will then be submitted into the DB
@@ -170,9 +172,12 @@ def urlToText(url):
     chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
     # drop blank lines
     text = '\n'.join(chunk for chunk in chunks if chunk)
+    print(text)
     # print(text)
     return text
 
+# urlToText("https://www.nevo.co.il/psika_html/mechozi/ME-98-4124-HK.htm")
+# urlToText("https://www.nevo.co.il/psika_html/mechozi/ME-17-12-378-33.htm")
 
 #################### mohr current working on ###############################33
 def convert_str_to_int_dict(str_arr):
@@ -236,6 +241,51 @@ def add_to_txt_db(url, text, court_type):
         newFile.write(text)
 
 
+
+def extract_publish_dates(text):
+    t = get_lines_after(text, "נ'", 50,0)
+    name = text.splitlines()[0].replace("(","")
+    print("name = ",name)
+    #print("ext = ", extractWordAfterKeywords(name, " בנבו, "))
+    matches = re.findall(YEAR_REG,name)
+    if len(matches) > 0:
+        print(matches[0])
+        return matches[0]
+    else:
+        print("-1")
+        return "-1"
+def get_urls_from_text_source(text_source):
+    # text = open(text_source,"r")
+    with open(text_source, 'r',encoding="utf8") as file:
+        text = file.read()#.replace('\n', '')
+    urls = []
+    t_by_lines = text.splitlines()
+    key_word = "<a title=\"הורדת HTML\" class=\"textLink htmLink"
+    ref_start = "href=\""
+    for line in t_by_lines:
+        if (line.find(key_word) > 0):
+            start = line.find(ref_start) + len(ref_start)
+            end = line[start:].find("\" t")
+            # print("indesx = ",start)
+            urls.append("https://www.nevo.co.il"+line[start:start + end])
+            # print("https://www.nevo.co.il"+line[start:start + end])
+    print(urls)
+    return urls
+
+def get_all_URLS(source):
+    content = urllib.request.urlopen(source)
+    html = content.read()
+    soup = BeautifulSoup(html, features="html.parser")
+    div_list = []
+
+    print("soup = ", soup.get_text())#"<div class=\"documentsLinks\">")
+
+    for ul in soup.find_all('div'):
+        div_list.extend(ul.find_all('div', {'class': 'searchItem'}))
+
+    print(div_list)
+
+    # print("soup = ", soup.find('div', { "role" : "article"}))#"<div class=\"documentsLinks\">")
 """
 This function receives a path with many verdicts (presumably in word or html format), and uses the code to create a
 database
@@ -258,6 +308,7 @@ def fromVerdictsToDB(urls):
             counter +=1
             file_name = os.path.join(directory, filename)
             text = open(file_name, "r", encoding="utf-8").read()
+            extract_publish_dates(text)
             print("^^^ File is ", file_name, " ^^^")
             print("filename = ",filename,"counter = ",counter,"year = ",years[counter])
             db = pd.concat([db, extractParameters(text, db, years[counter], filename)])
@@ -270,7 +321,7 @@ def fromVerdictsToDB(urls):
             # case_names.append(filename)
         else:
             continue
-    db.to_csv('out.csv')
+    db.to_csv('out2.csv')
     # db = db.append(pd.concat([pd.DataFrame([all_accused[i], [case_names[i]]],
     #                                        columns=['accused']) for i in range(len(years))],ignore_index=True))
     # db = db.append(pd.concat([pd.DataFrame([case_names[i]],
@@ -295,8 +346,15 @@ def fromVerdictsToDB(urls):
 
     print("\n\n")
 
+# source = "https://www.nevo.co.il/"
+source = "https://www.nevo.co.il/PsikaSearchResults.aspx"
+text_searc = "C:\\Users\\oryiz\\Desktop\\MohrsStuff\\URLs From Nevo\\search1.txt"
+# get_all_URLS(source)
+urls = get_urls_from_text_source(text_searc)
+CHARGES = ['345', '346', '347', '348', '349', '350', '351']
 
-urls = []
+fromVerdictsToDB(urls)
+
 
 # ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm" - 1998,
 #         "https://www.nevo.co.il/psika_html/mechozi/m06000511-a.htm" - 2006,
@@ -319,9 +377,7 @@ urls = []
 #         "https://www.nevo.co.il/psika_html/mechozi/ME-98-4124-HK.htm" - 2003
 #         ]
 
-CHARGES = ['345', '346', '347', '348', '349', '350', '351']
 
-# fromVerdictsToDB(urls)
 
 # ------------------------ Demo plots -----------------------------#
 def demo_plot1():
@@ -331,21 +387,20 @@ def demo_plot1():
         years = np.arange(10)+2007
         compensations = np.random.randint(10, 100, size = 10)
         compensations = compensations + trend
-        plt.plot(years, compensations, alpha=0.1)
+        plt.plot(years, compensations, alpha=0.1,label = city)
 
         if city == "Be'er Sheva" or city == "Tel Aviv":
             if city == "Be'er Sheva":
                 compensations = compensations - 15
 
-            plt.plot(years, compensations)
-        plt.scatter(years, compensations, label = city)
+            plt.plot(years, compensations,label = city)
+        #plt.scatter(years, compensations, label = city)
 
 
     plt.title ("Avarege compensation amount across years according to district")
     plt.xlabel("Year")
     plt.ylabel("amont in thousand Shekels")
     plt.xticks(years)
-    plt.ylim(0,150)
     plt.legend(loc = "best")
     plt.savefig("try2_trend")
     plt.show()
@@ -356,10 +411,27 @@ def demo_plot_2():
     print(compensations)
     for i in range(len(compensations)):
         if i < 2:
-            plt.scatter([i*10], [1], color = "cornflowerblue", s= compensations[i]*10 )
+            plt.bar([i*10], [compensations[i]*10], color = "cornflowerblue" )
         else:
-            plt.scatter([i*10], [1], color = "lightcoral", s = compensations[i]*10 )
-    plt.xticks = np.arange(4)
+            plt.bar([i*10], [compensations[i]*10], color = "lightcoral" )
+    plt.xticks (np.arange(4)*10)
+    plt.title("The average compensation amount as a factor of\n the amount of female judges")
+    plt.xlabel("The amount of female judges (X10)")
+
     plt.show()
 
-demo_plot_2()
+def demo_plot_4():
+    judge = np.array([ 1,    2,   3,   2,    1    , 3,   3,   3,   3, 3,  1,    3,   3,   3,   3,  3, 2])
+    # judge = np.array([3,  1,    2,   3,   3,   2,    1    , 3,   3,   3,   3, 3,  1,    3,   3,   3,   3,  3, 2])
+    lines = np.array([ 130, 458, 665, 1005, 123   ,824, 63, 251, 174, 76, 116, 972, 288, 579, 109, 1792, 295])
+    # lines = np.array([19, 130, 458, 665,10468, 1005, 123   ,824, 63, 251, 174, 76, 116, 972, 288, 579, 109, 1792, 295])
+
+    for i in range(3):
+        plt.bar([i+1], [np.average(lines[np.argwhere(judge == i+1)])])
+    plt.xticks([1,2,3])
+    plt.xlabel("number of judges")
+    plt.ylabel("number of sentences")
+    plt.title("Average amount of sentences as factor\n of amount of judges")
+    plt.show()
+
+# fromVerdictsToDB(urls)
