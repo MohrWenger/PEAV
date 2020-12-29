@@ -23,7 +23,13 @@ ARCHA = "archa"
 JuDGE_NUM = ""
 VIRGINS = ""
 
-YEAR_REG = r"([1-3]{0,1}[0-9]\/[1-2]{0,1}[0-9]\/[1-2]{0,1}[0-9]{1,3}|[1-3]{0,1}[0-9]\.[1-2]{0,1}[0-9]\.[1-2]{0,1}[0-9]{1,3})"
+YEAR_REG = r"([0-3]{0,1}[0-9]\/[0-2]{0,1}[0-9]\/[0-2]{0,1}[0-9]{1,3})|([0-3]{0,1}[0-9]\.[0-2]{0,1}[0-9]\.[0-2]{0,1}[0-9]{1,3})"
+
+no_districtCounter = 0
+no_caseNameCounter = 0
+no_chargesCounter = 0
+no_compensCounter = 0
+no_accusedName = 0
 
 #### CONVENTIONS
 # All the extraction functions RETURN the value at the end, which will then be submitted into the DB
@@ -62,6 +68,8 @@ def get_lines_after(text, word, amount,startAfter, limit="eof"):
     :return:
     """
     t_by_lines = text.splitlines()
+    num_lines = len(t_by_lines)
+    print("looking for ",word," in verdict: ",t_by_lines[0])
     if limit == "eof":
         limit = len(t_by_lines)
     start = 0
@@ -71,7 +79,8 @@ def get_lines_after(text, word, amount,startAfter, limit="eof"):
             relevant_lines = []
             if start < limit:
                 for i in range(amount):
-                    relevant_lines.append(t_by_lines[start + i])
+                    if start + i < num_lines:
+                        relevant_lines.append(t_by_lines[start + i])
                 # print("\n".join(relevant_lines))
                 return "\n".join(relevant_lines)
             else:
@@ -82,21 +91,18 @@ def get_lines_after(text, word, amount,startAfter, limit="eof"):
 
 
 def accusedName(text):
-    return extractWordAfterKeywords(text, ["נ'"])
-
+    accused_found = extractWordAfterKeywords(text, ["נ'"])
+    return accused_found
 
 def compensation(text):  # TODO: in one instance finds the salary instead of compensation
     # text = allTheTextAfterAWord(text, "סיכום") # TODO: not always a title of "summary"
     return extractWordAfterKeywords(text, ["סך של כ-", "סך של"]) # TODO: sometimes there's only "סך"
 
-
 def courtArea(text):
     return findBetweenParentheses(text)
 
-
 def howManyLines(text):
     return len(text.split("."))
-
 
 def ageOfVictim(text):
     found = extractWordAfterKeywords(text, [" כבת", " בת"])
@@ -111,9 +117,6 @@ def ageOfVictim(text):
                 return cleanFound
     return -1
 
-
-
-
 def interestingWords(text):
     print(text.find("אינה בתולה") != -1)
     print(ageOfVictim(text))
@@ -122,30 +125,43 @@ def interestingWords(text):
 
 
 ############ Main Functions ################
-
-
 def extractParameters(text, db, year, case_name):
     #TODO : figure out how to limit the search area (ideas - number of lines, not in entioned laws, before discausion etc...)
     # think of a good structure to call each function of extraction and put the output in the correct column
     accused_name = accusedName(text)
-    db = db.append({'accused_name':accused_name},ignore_index=True)
+    db = db.append({'accused_name': accused_name}, ignore_index=True)
+    if accused_name == -1:
+        global no_accusedName
+        no_accusedName += 1
+
     charges =  extractLaw(text)
     db = db.append({'charges':charges},ignore_index=True)
+    if charges == -1:
+        global no_chargesCounter
+        no_chargesCounter += 1
+
     compens = compensation(text)
     db = db.append({'compensation':compens},ignore_index=True)
+    if compens == -1:
+        global no_compensCounter
+        no_compensCounter += 1
+
     district = courtArea(text)
     db = db.append({"district": district},ignore_index=True)
+    if district == -1:
+        global  no_districtCounter
+        no_districtCounter +=1
+
     lines_num = howManyLines(text)
     db = db.append({"lines_num": lines_num},ignore_index=True)
     db = db.append({"year": year},ignore_index=True)
     db = db.append({"case_name": case_name},ignore_index=True)
     interestingWords(text)
     # ['case_num', 'year', 'district', 'charges', 'accused_name', 'lines_num'])
-    case_ftr = pd.DataFrame(        [[case_name,   year,   district,  -1, compens,           accused_name ,lines_num]],
+    case_ftr = pd.DataFrame([[case_name,   year,   district,  charges, compens,           accused_name ,lines_num]],
                             columns=['case_num', 'year', 'district', 'charges', 'compensation','accused_name', 'lines_num'])
     # db = pd..appended(case_ftr)
     return case_ftr
-
 
 def createNewDB():
     # create a xls file with the right columns as the parameters
@@ -202,9 +218,10 @@ def plot_amount_of_param_in_param(db, col_name, y_data = None):
         sum_vals_y = list(Counter(temp_db[y_data]).values())
         # print("UV_y = ", unique_vals_y)
         # print("SV_y = ", sum_vals_y)
-        plt.scatter(unique_vals_y, sum_vals_y,label = value)
-        #plt.plot(unique_vals_y, sum_vals_y,alpha = 0.1)
+        plt.scatter(unique_vals_y, sum_vals_y,label = value[::-1])
+        plt.plot(unique_vals_y, sum_vals_y,alpha = 0.1)
     plt.legend(loc = "best")
+    plt.xlim(1985,2025)
     plt.show()
     # x_final_data = x_data
     # if type(x_data[0]) is str:
@@ -235,27 +252,34 @@ def extractLaw(text):
                 amount_appeard.append(text.count(chrg))
     print("section = ", all_charges)
     # print("appeared: ", amount_appeard)
-    return all_charges
-
+    if len(all_charges) > 0:
+        return all_charges
+    else:
+        return -1
 
 def add_to_txt_db(url, text, court_type):
     name_file = url.strip("https://www.nevo.co.il/psika_html/"+court_type+"/")
     with open(VERDICTS_DIR + name_file + ".txt", "w", encoding="utf-8") as newFile:
         newFile.write(text)
 
-
+counter_noYearFound = 0
 
 def extract_publish_dates(text):
-    t = get_lines_after(text, "נ'", 50,0)
+    # t = get_lines_after(text, "נ'|נגד", 50,0) TODO - when the year is in paranthesis
     name = text.splitlines()[0].replace("(","")
+    name = name.replace(")","")
     print("name = ",name)
     #print("ext = ", extractWordAfterKeywords(name, " בנבו, "))
     matches = re.findall(YEAR_REG,name)
     if len(matches) > 0:
-        print(matches[0])
-        return matches[0]
+        print("matches = ",matches[0][1])
+        date = matches[0][1]
+        year = date.split(".")[2]
+        return (int)(year)
     else:
-        print("-1")
+        global counter_noYearFound
+        counter_noYearFound += 1
+        print("check here cause got -1")
         return "-1"
 
 def get_urls_from_text_source(text_source):
@@ -304,15 +328,16 @@ def fromVerdictsToDB():
     all_accused = []
 
     directory = VERDICTS_DIR               #text files eddition:
-    years = [1998, 2006, 2009, 2006, 2006, 2004, 1999, 2000, 2005, 2000, 2015, 1994, 2001, 2016, 2005, 2001, 2001, 2001, 2003]
+    years = []
+    # years = [1998, 2006, 2009, 2006, 2006, 2004, 1999, 2000, 2005, 2000, 2015, 1994, 2001, 2016, 2005, 2001, 2001, 2001, 2003]
     counter = -1
-    print("years len = ", len(years))
+    # print("years len = ", len(years))
     for i, filename in enumerate(os.listdir(directory)):
         if filename.endswith(".txt"):
             counter +=1
             file_name = os.path.join(directory, filename)
             text = open(file_name, "r", encoding="utf-8").read()
-            extract_publish_dates(text)
+            years.append(extract_publish_dates(text))
             print("^^^ File is ", file_name, " ^^^")
             print("filename = ",filename,"counter = ",counter,"year = ",years[counter])
             db = pd.concat([db, extractParameters(text, db, years[counter], filename)])
@@ -325,7 +350,7 @@ def fromVerdictsToDB():
             # case_names.append(filename)
         else:
             continue
-    db.to_csv('out2.csv')
+    db.to_csv('out4.csv', encoding= 'utf-8')
     # db = db.append(pd.concat([pd.DataFrame([all_accused[i], [case_names[i]]],
     #                                        columns=['accused']) for i in range(len(years))],ignore_index=True))
     # db = db.append(pd.concat([pd.DataFrame([case_names[i]],
@@ -346,7 +371,7 @@ def fromVerdictsToDB():
                   "מחוזי תל אביב-יפו", "מחוזי חיפה", "מחוזי באר שבע", "מחוזי נצרת" , "מחוזי ב\"ש", "מחוזי חיפה",
                   "מחוזי נצרת", "מחוזי תל אביב-יפו", "מחוזי חיפה", "מחוזי תל אביב-יפו", "מחוזי תל אביב-יפו", "מחוזי באר שבע", "מחוזי תל אביב-יפו"]
         # tel_aviv = [1998, 2001, 2001, 2000, 2003]
-    plot_amount_of_param_in_param(db, "district","year")
+    # plot_amount_of_param_in_param(db, "district","year")
 
     print("\n\n")
 
@@ -398,7 +423,15 @@ def from_search_to_local():
 
 if __name__ == "__main__":
     fromVerdictsToDB()
+    print("no year found = ",counter_noYearFound)
+    print("no accused name found = ",no_accusedName)
+    print("no district found = ",no_districtCounter)
+    print("no compensation found = ",no_compensCounter)
+    print("no charges found", no_chargesCounter)
     # from_search_to_local()
+    # df = pd.read_csv("out4.csv", error_bad_lines= False)
+    # plot_amount_of_param_in_param(df,DISTRICT,YEAR)
+
 
 # ------------------------ Demo plots -----------------------------#
 def demo_plot1():
@@ -455,3 +488,10 @@ def demo_plot_4():
     plt.title("Average amount of sentences as factor\n of amount of judges")
     plt.show()
 
+#------------------ Real plots ---------------------------------#
+def plot_year_and_dist(batch):
+    batch = batch.loc[batch[YEAR] != '-1']
+    all_years = batch[YEAR]
+    all_dist = batch[DISTRICT]
+
+    plt.plot(all_years,all_dist)
