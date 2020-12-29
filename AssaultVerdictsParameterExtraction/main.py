@@ -157,7 +157,10 @@ def createNewDB():
 def urlToText(url):
     webUrl = urllib.request.urlopen(url)
     html = webUrl.read()
-    soup = BeautifulSoup(html, features="html.parser")
+    # import urllib
+    # webUrl = urllib.urlopen("https://www.nevo.co.il/psika_html/mechozi/ME-19-07-69765-55.htm").read()
+    # html = html_1.decode('utf-8')
+    soup = BeautifulSoup(html, features="html.parser", from_encoding= 'utf-8-sig')
 
     # kill all script and style elements
     for script in soup(["script", "style"]):
@@ -172,8 +175,8 @@ def urlToText(url):
     chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
     # drop blank lines
     text = '\n'.join(chunk for chunk in chunks if chunk)
+    print(soup.original_encoding)
     print(text)
-    # print(text)
     return text
 
 # urlToText("https://www.nevo.co.il/psika_html/mechozi/ME-98-4124-HK.htm")
@@ -254,6 +257,7 @@ def extract_publish_dates(text):
     else:
         print("-1")
         return "-1"
+
 def get_urls_from_text_source(text_source):
     # text = open(text_source,"r")
     with open(text_source, 'r',encoding="utf8") as file:
@@ -290,7 +294,7 @@ def get_all_URLS(source):
 This function receives a path with many verdicts (presumably in word or html format), and uses the code to create a
 database
 """
-def fromVerdictsToDB(urls):
+def fromVerdictsToDB():
     db = createNewDB()
     case_names = []
     compens = []
@@ -350,11 +354,26 @@ def fromVerdictsToDB(urls):
 source = "https://www.nevo.co.il/PsikaSearchResults.aspx"
 text_searc = "C:\\Users\\oryiz\\Desktop\\MohrsStuff\\URLs From Nevo\\search1.txt"
 # get_all_URLS(source)
-urls = get_urls_from_text_source(text_searc)
+# urls = get_urls_from_text_source(text_searc)
 CHARGES = ['345', '346', '347', '348', '349', '350', '351']
 
-fromVerdictsToDB(urls)
+# fromVerdictsToDB(urls)
 
+searches_results = ["search11.txt","search12.txt","search13.txt","search14.txt","search15.txt","search16.txt","search17.txt","search18.txt","search19.txt","search20.txt"]
+
+def from_search_to_local():
+    dir = "SearchResults\\"
+    for serach in searches_results:
+        allURLS = get_urls_from_text_source(dir+serach)
+        for url in allURLS:
+            text = urlToText(url)
+            print("url = ",url)
+            if url.find("mechozi") > 0:
+                 add_to_txt_db(url,text,"mechozi")
+            elif url.find("shalom") > 0:
+                add_to_txt_db(url, text, "shalom")
+            else:
+                print("didn't work for: ",url)
 
 # ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm" - 1998,
 #         "https://www.nevo.co.il/psika_html/mechozi/m06000511-a.htm" - 2006,
@@ -377,7 +396,9 @@ fromVerdictsToDB(urls)
 #         "https://www.nevo.co.il/psika_html/mechozi/ME-98-4124-HK.htm" - 2003
 #         ]
 
-
+if __name__ == "__main__":
+    fromVerdictsToDB()
+    # from_search_to_local()
 
 # ------------------------ Demo plots -----------------------------#
 def demo_plot1():
@@ -434,4 +455,3 @@ def demo_plot_4():
     plt.title("Average amount of sentences as factor\n of amount of judges")
     plt.show()
 
-# fromVerdictsToDB(urls)
