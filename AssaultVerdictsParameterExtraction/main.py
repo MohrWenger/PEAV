@@ -16,32 +16,44 @@ DISTRICT = "district"
 CASE_NUM = "case_num"
 ACCUSED_NAME = "accused"
 NUM_LINES = "num_lines"
-DAY = "day"
-MONTH = "month"
 YEAR = "year"
 COMPENSATION = "compensation"
-CHARGES = "charges"
-AGE = "age"
+ACCUSED = "accused"
 ARCHA = "archa"
 JuDGE_NUM = ""
 VIRGINS = ""
 
 YEAR_REG = r"([0-3]{0,1}[0-9]\/[0-2]{0,1}[0-9]\/[0-2]{0,1}[0-9]{1,3})|([0-3]{0,1}[0-9]\.[0-2]{0,1}[0-9]\.[0-2]{0,1}[0-9]{1,3})"
 
-# TA = ת"\א
-# DIST_DICT = {"תל אביב":[],
-#              "באר שבע":[]}
-
 no_districtCounter = 0
 no_caseNameCounter = 0
 no_chargesCounter = 0
 no_compensCounter = 0
 no_accusedName = 0
-no_ageCounter = 0
 
 #### CONVENTIONS
 # All the extraction functions RETURN the value at the end, which will then be submitted into the DB
 # If an extraction function doesn't find the parameter, we return -1
+
+################# YAP #####################
+verdicts = "verdicts/"
+output = open("yap_inputs/input.txt", "w")
+for filename in os.listdir("verdicts/"):
+    file = open(verdicts + filename,"r").read()
+    output.write(filename)
+    sep_file = re.findall(r"[\w']+|[.,!?;-]", file)
+    text = "\n".join(sep_file)
+    correctly_spaced = text.replace(".", ".\n")
+    output.write(correctly_spaced)
+    output.write("\n")
+    output.write("\n")
+output.close()
+
+file = open("/Users/tomkalir/Projects/yap/src/yap/output.conll","r").read()
+num_of_male = len(re.findall("gen=M", file))
+num_of_female = len(re.findall("gen=F", file))
+print(num_of_female)
+print(num_of_male)
 
 ################# Generic Functions For Extraction ######################
 
@@ -56,7 +68,7 @@ def findBetweenParentheses(text):
     return text[targetStartIndex:parenthesisAfterEndIndex]
 
 
-def extractWordAfterKeywords(text, words):
+def extractWordAfterKeywords(text, words, until=" ", numOfWords=1):
     for word in words:
         keywordIndex = text.find(word)
         if keywordIndex != -1:
@@ -64,8 +76,13 @@ def extractWordAfterKeywords(text, words):
     if keywordIndex == -1:
         return -1
     targetStartIndex = keywordIndex + len(word) + 1  # plus one because of space
-    spaceAfterEndIndex = text.find(" ", targetStartIndex)
-    return text[targetStartIndex:spaceAfterEndIndex]
+    i = 0
+    lastSpace = targetStartIndex
+    while i < numOfWords:
+        spaceAfterEndIndex = text.find(until, lastSpace) + 1
+        lastSpace = spaceAfterEndIndex
+        i += 1
+    return text[targetStartIndex:spaceAfterEndIndex - 1]
 
 def get_lines_after(text, word, amount,startAfter, limit="eof"):
     """
@@ -87,8 +104,7 @@ def get_lines_after(text, word, amount,startAfter, limit="eof"):
             relevant_lines = []
             if start < limit:
                 for i in range(amount):
-                    if start + i < num_lines:
-                        relevant_lines.append(t_by_lines[start + i])
+                    relevant_lines.append(t_by_lines[start + i])
                 # print("\n".join(relevant_lines))
                 return "\n".join(relevant_lines)
             else:
@@ -96,6 +112,32 @@ def get_lines_after(text, word, amount,startAfter, limit="eof"):
     return -1
 
 ##############################PARAMETERS#######################################
+
+def extractLaw(text):
+    reg_word = "חקיקה שאוזכרה"
+    # reg_word = "פסק ה*דין"
+    relevant = get_lines_after(text, reg_word, 10, 2)
+    all_charges = []
+    amount_appeared = []
+    for chrg in CHARGES:
+        if relevant.find(chrg) != -1:
+            all_charges.append([chrg, text.count(chrg)])
+            amount_appeared.append(text.count(chrg))
+    # print("section = ", all_charges)
+    # print("appeared: ", amount_appeared)
+    return all_charges
+
+
+def countWords(text, wordsList, numOfLines=0, wordAfter=""):
+    all = []
+    amount_appeared = []
+    if wordAfter:
+        text = get_lines_after(text, wordAfter, numOfLines, 0)
+    for word in wordsList:
+        if text.find(word) != -1:
+            all.append([word, text.count(word)])
+            amount_appeared.append(text.count(word))
+    return all
 
 
 def accusedName(text):
@@ -107,15 +149,56 @@ def compensation(text):  # TODO: in one instance finds the salary instead of com
     return extractWordAfterKeywords(text, ["סך של כ-", "סך של"]) # TODO: sometimes there's only "סך"
 
 def courtArea(text):
-    dist =  findBetweenParentheses(text)
-    if any(i.isdigit() for i in dist):
-        return -1
-    else:
-        return dist
-
+    return findBetweenParentheses(text)
 
 def howManyLines(text):
     return len(text.split("."))
+
+
+def judges(text):
+    # lastIndex = text.rfind("שופט")
+    # return countWords(text[lastIndex-100:lastIndex+5], ["שופטת", "שופט ", "שופט,", "נשיאה", "נשיא ", "נשיא,"])
+    text = text.replace("נשיא", "שופט")
+    instances = [i for i in range(len(text)) if text.startswith('שופט', i)]
+    i = 1
+    maxCount = 0
+    while i < len(instances):
+        count = 0
+        while i < len(instances) and instances[i] - instances[i-1] < 50:
+            count += 1
+            i += 1
+        if not count:
+            i += 1
+        if count > maxCount:
+            maxCount = count
+    return maxCount + 1
+
+
+def sexOfJudges(text):
+    text = text.replace("נשיא", "שופט")
+    instances = [i for i in range(len(text)) if text.startswith('שופט', i)]
+    i = 1
+    maxCount = 0
+    first = 0
+    while i < len(instances):
+        count = 0
+        maybe = i
+        while i < len(instances) and instances[i] - instances[i - 1] < 50:
+            count += 1
+            i += 1
+        if not count:
+            i += 1
+        if count > maxCount:
+            maxCount = count
+            first = maybe
+
+    judges = instances[first:first+maxCount+1]
+    female = 0
+    for judge in judges:
+        if text[judge+4] != " ":
+            female += 1
+    return female
+
 
 def ageOfVictim(text):
     found = extractWordAfterKeywords(text, [" כבת", " בת"])
@@ -136,9 +219,12 @@ def interestingWords(text):
     # print(get_lines_after(text, "בוצעה*", 2, 0)) # interesting to find the year the accusation took place
     # print(extractWordAfterKeywords(text, [" כבת", " בת"]))
 
+def isVictimMale(text):
+    return True if text.count("מתלוננת") < text.count("מתלונן") else False
+
 
 ############ Main Functions ################
-def extractParameters(text, db, case_name):
+def extractParameters(text, db, year, case_name):
     #TODO : figure out how to limit the search area (ideas - number of lines, not in entioned laws, before discausion etc...)
     # think of a good structure to call each function of extraction and put the output in the correct column
     accused_name = accusedName(text)
@@ -165,36 +251,21 @@ def extractParameters(text, db, case_name):
         global  no_districtCounter
         no_districtCounter +=1
 
-    age = ageOfVictim(text)
-    db = db.append({AGE: age},ignore_index=True)
-    if age == -1:
-        global no_ageCounter
-        no_ageCounter +=1
-
     lines_num = howManyLines(text)
     db = db.append({"lines_num": lines_num},ignore_index=True)
-
-    date = extract_publish_dates(text)
-    if date != "-1":
-        # print()
-        day, month, year = date
-    else:
-        day, month, year = [-1,-1,-1]
-    db = db.append({YEAR: year},ignore_index=True)
-    db = db.append({MONTH: month},ignore_index=True)
-    db = db.append({DAY: day},ignore_index=True)
+    db = db.append({"year": year},ignore_index=True)
     db = db.append({"case_name": case_name},ignore_index=True)
     interestingWords(text)
     # ['case_num', 'year', 'district', 'charges', 'accused_name', 'lines_num'])
-    case_ftr = pd.DataFrame([[case_name, day,month,  year,   district,  age ,charges, compens, accused_name ,lines_num]],
-                            columns=['case_num',DAY, MONTH, YEAR, 'district',AGE, 'charges', 'compensation','accused_name', 'lines_num'])
+    case_ftr = pd.DataFrame([[case_name,   year,   district,  charges, compens,           accused_name ,lines_num]],
+                            columns=['case_num', 'year', 'district', 'charges', 'compensation','accused_name', 'lines_num'])
     # db = pd..appended(case_ftr)
     return case_ftr
 
 def createNewDB():
     # create a xls file with the right columns as the parameters
     # TODO: idea to use a dictionary as the structure to create this DB
-    df = pd.DataFrame(columns=[CASE_NUM, DAY, MONTH, YEAR, DISTRICT, AGE ,CHARGES, COMPENSATION, ACCUSED_NAME, NUM_LINES])
+    df = pd.DataFrame(columns=[CASE_NUM, YEAR, DISTRICT, 'charges', COMPENSATION, ACCUSED, NUM_LINES])
     return df
 
 
@@ -273,11 +344,9 @@ def extractLaw(text):
     all_charges = []
     amount_appeard = []
     line_appeadr =[] #TODO Deduce from the line all apeared in which is previuously mentioned
-    for chrg in RELEVANT_CHARGES:
+    for chrg in CHARGES:
         if relevant != -1:
-            # print("chrg = ",type(chrg))
-            # if relevant.find(chrg) != -1:
-            if re.findall(text, chrg) != -1:
+            if relevant.find(chrg) != -1:
                 all_charges.append([chrg, text.count(chrg)])
                 amount_appeard.append(text.count(chrg))
     print("section = ", all_charges)
@@ -304,9 +373,8 @@ def extract_publish_dates(text):
     if len(matches) > 0:
         print("matches = ",matches[0][1])
         date = matches[0][1]
-        print("date = ",date)
-        day, month, year = date.split(".")
-        return [(int)(day),(int)(month),(int)(year)]
+        year = date.split(".")[2]
+        return (int)(year)
     else:
         global counter_noYearFound
         counter_noYearFound += 1
@@ -359,7 +427,7 @@ def fromVerdictsToDB():
     all_accused = []
 
     directory = VERDICTS_DIR               #text files eddition:
-    # years = []
+    years = []
     # years = [1998, 2006, 2009, 2006, 2006, 2004, 1999, 2000, 2005, 2000, 2015, 1994, 2001, 2016, 2005, 2001, 2001, 2001, 2003]
     counter = -1
     # print("years len = ", len(years))
@@ -368,10 +436,10 @@ def fromVerdictsToDB():
             counter +=1
             file_name = os.path.join(directory, filename)
             text = open(file_name, "r", encoding="utf-8").read()
-
+            years.append(extract_publish_dates(text))
             print("^^^ File is ", file_name, " ^^^")
-            # print("filename = ",filename,"counter = ",counter,"year = ",years[counter])
-            db = pd.concat([db, extractParameters(text, db, filename)])
+            print("filename = ",filename,"counter = ",counter,"year = ",years[counter])
+            db = pd.concat([db, extractParameters(text, db, years[counter], filename)])
 
             # all_accused.append( accusedName(text))
             # #charges.append(extractLaw(text))
@@ -411,7 +479,7 @@ source = "https://www.nevo.co.il/PsikaSearchResults.aspx"
 text_searc = "C:\\Users\\oryiz\\Desktop\\MohrsStuff\\URLs From Nevo\\search1.txt"
 # get_all_URLS(source)
 # urls = get_urls_from_text_source(text_searc)
-RELEVANT_CHARGES = ['345', '346', '347', '348', '349', '350', '351']
+CHARGES = ['345', '346', '347', '348', '349', '350', '351']
 
 # fromVerdictsToDB(urls)
 
@@ -431,33 +499,27 @@ def from_search_to_local():
             else:
                 print("didn't work for: ",url)
 
+# ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm" - 1998,
+#         "https://www.nevo.co.il/psika_html/mechozi/m06000511-a.htm" - 2006,
+#         "https://www.nevo.co.il/psika_html/mechozi/ME-09-02-10574-380.htm" - 2009,
+#         "https://www.nevo.co.il/psika_html/mechozi/m06007004-660.htm" - 2006,
+#         "https://www.nevo.co.il/psika_html/mechozi/m06020001.htm" - 2006,
+#         "https://www.nevo.co.il/psika_html/shalom/s01003122-438.htm" - 2004,
+#         "https://www.nevo.co.il/psika_html/shalom/s981928.htm" - 1999,
+#         "https://www.nevo.co.il/psika_html/mechozi/m011190a.htm" - 2000,
+#         "https://www.nevo.co.il/psika_html/mechozi/m01000232.htm" - 2005,
+#         "https://www.nevo.co.il/psika_html/mechozi/m99934.htm" - 2000,
+#         "https://www.nevo.co.il/psika_html/mechozi/ME-12-01-13327-55.htm" - 2015,
+#         "https://www.nevo.co.il/psika_html/mechozi/me-93-76-a.htm" - 1994,
+#         "https://www.nevo.co.il/psika_html/mechozi/m01171.htm" - 2001,
+#         "https://www.nevo.co.il/psika_html/mechozi/ME-16-12-8398-11.htm" - 2016,
+#         "https://www.nevo.co.il/psika_html/mechozi/m01000405-a.htm" - 2005,
+#         "https://www.nevo.co.il/psika_html/mechozi/m00001039-148.htm" - 2001,
+#         "https://www.nevo.co.il/psika_html/mechozi/m001129.htm" - 2001,
+#         "https://www.nevo.co.il/psika_html/mechozi/m00000935-103.htm" - 2001,
+#         "https://www.nevo.co.il/psika_html/mechozi/ME-98-4124-HK.htm" - 2003
+#         ]
 
-#------------------ Real plots ---------------------------------#
-def plot_amount_per_param(batch, param,str_labels = False, should_revers = False):
-    curr_batch = batch.loc[batch[param] != '-1']
-    curr_batch = batch.loc[batch[param] != -1]
-    all_param = np.unique(batch[param])
-    amount_in_param = []
-    x_lables = []
-    for p in all_param:
-        print("p = ",p)
-        amount_in_param.append(len(curr_batch.loc[batch[param] == p]))
-        if should_revers:
-            # p = p[::-1]
-            x_lables.append(p[len(p):len(p)-5:-1])
-        else:
-            x_lables.append(p)
-    plt.plot(np.arange(len(all_param)), amount_in_param)
-    # plt.xlim(1985,2025)
-
-    if (str_labels):
-        plt.xticks(np.arange(len(all_param))[1:],labels=x_lables)
-    plt.title("Amount of cases by "+param)
-    plt.xlabel(param)
-    plt.ylabel("amount of cases")
-    plt.show()
-
-#-------------------- main ---------------------#
 if __name__ == "__main__":
     fromVerdictsToDB()
     print("no year found = ",counter_noYearFound)
@@ -465,11 +527,10 @@ if __name__ == "__main__":
     print("no district found = ",no_districtCounter)
     print("no compensation found = ",no_compensCounter)
     print("no charges found", no_chargesCounter)
-    print("no age found = ", no_ageCounter)
     # from_search_to_local()
-    df = pd.read_csv("out4.csv", error_bad_lines= False)
+    # df = pd.read_csv("out4.csv", error_bad_lines= False)
     # plot_amount_of_param_in_param(df,DISTRICT,YEAR)
-    df = plot_amount_per_param(df, DISTRICT ,True)#,str_labels= True, should_revers=True)
+
 
 # ------------------------ Demo plots -----------------------------#
 def demo_plot1():
@@ -526,24 +587,10 @@ def demo_plot_4():
     plt.title("Average amount of sentences as factor\n of amount of judges")
     plt.show()
 
+#------------------ Real plots ---------------------------------#
+def plot_year_and_dist(batch):
+    batch = batch.loc[batch[YEAR] != '-1']
+    all_years = batch[YEAR]
+    all_dist = batch[DISTRICT]
 
-# ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm" - 1998,
-#         "https://www.nevo.co.il/psika_html/mechozi/m06000511-a.htm" - 2006,
-#         "https://www.nevo.co.il/psika_html/mechozi/ME-09-02-10574-380.htm" - 2009,
-#         "https://www.nevo.co.il/psika_html/mechozi/m06007004-660.htm" - 2006,
-#         "https://www.nevo.co.il/psika_html/mechozi/m06020001.htm" - 2006,
-#         "https://www.nevo.co.il/psika_html/shalom/s01003122-438.htm" - 2004,
-#         "https://www.nevo.co.il/psika_html/shalom/s981928.htm" - 1999,
-#         "https://www.nevo.co.il/psika_html/mechozi/m011190a.htm" - 2000,
-#         "https://www.nevo.co.il/psika_html/mechozi/m01000232.htm" - 2005,
-#         "https://www.nevo.co.il/psika_html/mechozi/m99934.htm" - 2000,
-#         "https://www.nevo.co.il/psika_html/mechozi/ME-12-01-13327-55.htm" - 2015,
-#         "https://www.nevo.co.il/psika_html/mechozi/me-93-76-a.htm" - 1994,
-#         "https://www.nevo.co.il/psika_html/mechozi/m01171.htm" - 2001,
-#         "https://www.nevo.co.il/psika_html/mechozi/ME-16-12-8398-11.htm" - 2016,
-#         "https://www.nevo.co.il/psika_html/mechozi/m01000405-a.htm" - 2005,
-#         "https://www.nevo.co.il/psika_html/mechozi/m00001039-148.htm" - 2001,
-#         "https://www.nevo.co.il/psika_html/mechozi/m001129.htm" - 2001,
-#         "https://www.nevo.co.il/psika_html/mechozi/m00000935-103.htm" - 2001,
-#         "https://www.nevo.co.il/psika_html/mechozi/ME-98-4124-HK.htm" - 2003
-#         ]
+    plt.plot(all_years,all_dist)
