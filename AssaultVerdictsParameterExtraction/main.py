@@ -14,29 +14,41 @@ VERDICTS_DIR = "verdicts/"
 
 DISTRICT = "district"
 CASE_NUM = "case_num"
-ACCUSED_NAME = "accused"
+ACCUSED_NAME = "accused_name"
 NUM_LINES = "num_lines"
+DAY = "day"
+MONTH = "month"
 YEAR = "year"
 COMPENSATION = "compensation"
-ACCUSED = "accused"
+CHARGES = "charges"
+AGE = "age"
 ARCHA = "archa"
-JuDGE_NUM = ""
+JUDGE_NUM = "JUDGE_NUM"
+FEMALE_J_NUM = "FEMALE_J_NUM"
+MALE_J_NUM = "MALE_J_NUM"
+FEMALE_J_PERCENT = "FEMALE_J_PERCENT"
+ASSULTED_GENDER = "Assulted Gender"
 VIRGINS = ""
 
 YEAR_REG = r"([0-3]{0,1}[0-9]\/[0-2]{0,1}[0-9]\/[0-2]{0,1}[0-9]{1,3})|([0-3]{0,1}[0-9]\.[0-2]{0,1}[0-9]\.[0-2]{0,1}[0-9]{1,3})"
+
+# TA = ת"\א
+# DIST_DICT = {"תל אביב":[],
+#              "באר שבע":[]}
 
 no_districtCounter = 0
 no_caseNameCounter = 0
 no_chargesCounter = 0
 no_compensCounter = 0
 no_accusedName = 0
+no_ageCounter = 0
 
 #### CONVENTIONS
 # All the extraction functions RETURN the value at the end, which will then be submitted into the DB
 # If an extraction function doesn't find the parameter, we return -1
 
 ################# YAP #####################
-verdicts = "verdicts/"
+"""verdicts = "verdicts/"
 output = open("yap_inputs/input.txt", "w")
 for filename in os.listdir("verdicts/"):
     file = open(verdicts + filename,"r").read()
@@ -54,7 +66,7 @@ num_of_male = len(re.findall("gen=M", file))
 num_of_female = len(re.findall("gen=F", file))
 print(num_of_female)
 print(num_of_male)
-
+"""
 ################# Generic Functions For Extraction ######################
 
 def allTheTextAfterAWord(text, word, until=-1):
@@ -82,6 +94,7 @@ def extractWordAfterKeywords(text, words, until=" ", numOfWords=1):
         spaceAfterEndIndex = text.find(until, lastSpace) + 1
         lastSpace = spaceAfterEndIndex
         i += 1
+    print("text = ",text[(targetStartIndex-10):spaceAfterEndIndex - 1])
     return text[targetStartIndex:spaceAfterEndIndex - 1]
 
 def get_lines_after(text, word, amount,startAfter, limit="eof"):
@@ -149,7 +162,12 @@ def compensation(text):  # TODO: in one instance finds the salary instead of com
     return extractWordAfterKeywords(text, ["סך של כ-", "סך של"]) # TODO: sometimes there's only "סך"
 
 def courtArea(text):
-    return findBetweenParentheses(text)
+    dist =  findBetweenParentheses(text)
+    if any(i.isdigit() for i in dist):
+        return -1
+    else:
+        return dist
+
 
 def howManyLines(text):
     return len(text.split("."))
@@ -201,7 +219,8 @@ def sexOfJudges(text):
 
 
 def ageOfVictim(text):
-    found = extractWordAfterKeywords(text, [" כבת", " בת"])
+    found = extractWordAfterKeywords(text, [" כבת", " בת","טרם מלאו לה ","מתחת לגיל "])
+    print("age = ", found)
     if found != -1:
         cleanFound = found.translate(str.maketrans('', '', string.punctuation))
         if cleanFound.isnumeric():
@@ -224,7 +243,7 @@ def isVictimMale(text):
 
 
 ############ Main Functions ################
-def extractParameters(text, db, year, case_name):
+def extractParameters(text, db, case_name):
     #TODO : figure out how to limit the search area (ideas - number of lines, not in entioned laws, before discausion etc...)
     # think of a good structure to call each function of extraction and put the output in the correct column
     accused_name = accusedName(text)
@@ -233,39 +252,82 @@ def extractParameters(text, db, year, case_name):
         global no_accusedName
         no_accusedName += 1
 
-    charges =  extractLaw(text)
-    db = db.append({'charges':charges},ignore_index=True)
-    if charges == -1:
-        global no_chargesCounter
-        no_chargesCounter += 1
+    if (accused_name != "מדינת"):
 
-    compens = compensation(text)
-    db = db.append({'compensation':compens},ignore_index=True)
-    if compens == -1:
-        global no_compensCounter
-        no_compensCounter += 1
+        charges = -1
+        # charges =  extractLaw(text)
+        # db = db.append({'charges':charges},ignore_index=True)
+        # if charges == -1:
+        #     global no_chargesCounter
+        #     no_chargesCounter += 1
 
-    district = courtArea(text)
-    db = db.append({"district": district},ignore_index=True)
-    if district == -1:
-        global  no_districtCounter
-        no_districtCounter +=1
+        compens = compensation(text)
+        db = db.append({'compensation':compens},ignore_index=True)
+        if compens == -1:
+            global no_compensCounter
+            no_compensCounter += 1
 
-    lines_num = howManyLines(text)
-    db = db.append({"lines_num": lines_num},ignore_index=True)
-    db = db.append({"year": year},ignore_index=True)
-    db = db.append({"case_name": case_name},ignore_index=True)
-    interestingWords(text)
-    # ['case_num', 'year', 'district', 'charges', 'accused_name', 'lines_num'])
-    case_ftr = pd.DataFrame([[case_name,   year,   district,  charges, compens,           accused_name ,lines_num]],
-                            columns=['case_num', 'year', 'district', 'charges', 'compensation','accused_name', 'lines_num'])
-    # db = pd..appended(case_ftr)
-    return case_ftr
+        district = courtArea(text)
+        db = db.append({"district": district},ignore_index=True)
+        if district == -1:
+            global  no_districtCounter
+            no_districtCounter +=1
+
+        age = ageOfVictim(text)
+        db = db.append({AGE: age},ignore_index=True)
+        if age == -1:
+            global no_ageCounter
+            no_ageCounter +=1
+
+        lines_num = howManyLines(text)
+        db = db.append({"lines_num": lines_num},ignore_index=True)
+
+        date = extract_publish_dates(text)
+        if date != "-1":
+            # print()
+            day, month, year = date
+        else:
+            day, month, year = [-1,-1,-1]
+        db = db.append({YEAR: year},ignore_index=True)
+        db = db.append({MONTH: month},ignore_index=True)
+        db = db.append({DAY: day},ignore_index=True)
+        db = db.append({"case_name": case_name},ignore_index=True)
+        judges_amount = judges(text)
+        female_J = -1
+        sexPerc = -1
+        if (judges_amount != -1):
+            female_J = sexOfJudges(text)
+            male_J = judges_amount - female_J
+            sexPerc = round(female_J/judges_amount,3)
+
+            db = db.append({"JUDGES NUM":judges_amount},ignore_index=True)
+            db = db.append({"FEMALE_NUM":female_J},ignore_index=True)
+            db = db.append({"FEMALE-percent":sexPerc},ignore_index=True)
+        else:
+            db = db.append({"JUDGES NUM": -1})
+            db = db.append({"FEMALE_NUM": -1})
+            db = db.append({"MALE_NUM": -1})
+            db = db.append({"FEMALE-percent": -1})
+
+        assultedGender = isVictimMale(text)
+        if ( assultedGender != -1):
+            db = db.append({"Assulted Gender":assultedGender},ignore_index=True)
+
+        interestingWords(text)
+        # ['case_num', 'year', 'district', 'charges', 'accused_name', 'lines_num'])
+        case_ftr = pd.DataFrame([[case_name, day,month,  year,   district,  age ,charges, compens, accused_name,
+                                  assultedGender, judges_amount, female_J, male_J,sexPerc, lines_num]],
+                                columns=['case_num',DAY, MONTH, YEAR, 'district',AGE, 'charges', 'compensation','accused_name',
+                                         ASSULTED_GENDER,JUDGE_NUM,FEMALE_J_NUM,MALE_J_NUM,FEMALE_J_PERCENT,'lines_num'])
+        # db = pd..appended(case_ftr)
+        return case_ftr
+    else:
+        return None
 
 def createNewDB():
     # create a xls file with the right columns as the parameters
     # TODO: idea to use a dictionary as the structure to create this DB
-    df = pd.DataFrame(columns=[CASE_NUM, YEAR, DISTRICT, 'charges', COMPENSATION, ACCUSED, NUM_LINES])
+    df = pd.DataFrame(columns=[CASE_NUM, DAY, MONTH, YEAR, DISTRICT, AGE ,CHARGES, COMPENSATION, ACCUSED_NAME, NUM_LINES])
     return df
 
 
@@ -306,36 +368,9 @@ def convert_str_to_int_dict(str_arr):
         print(new_dict)
         return  new_dict
 
-
-def plot_amount_of_param_in_param(db, col_name, y_data = None):
-    #get unique values in col:
-    unique_vals_x = list(Counter(db[col_name]).keys())
-    to_plot = []
-    for value in unique_vals_x:
-        temp_db = db.loc[db[col_name] == value]
-        unique_vals_y = list(Counter(temp_db[y_data]).keys())
-        sum_vals_y = list(Counter(temp_db[y_data]).values())
-        # print("UV_y = ", unique_vals_y)
-        # print("SV_y = ", sum_vals_y)
-        plt.scatter(unique_vals_y, sum_vals_y,label = value[::-1])
-        plt.plot(unique_vals_y, sum_vals_y,alpha = 0.1)
-    plt.legend(loc = "best")
-    plt.xlim(1985,2025)
-    plt.show()
-    # x_final_data = x_data
-    # if type(x_data[0]) is str:
-    #     m_dict = convert_str_to_int_dict(x_data)
-    #     x_final_data = [m_dict[x_data[i]] for i in range(len(x_data))]
-    # print("x_final_data = ",x_final_data)
-    #find years:
-    # all_yeras = Counter(y_data).keys()
-    # for yr in all_yeras:
-    #     count_by_years =
-    #
-    # for ftr,appr in Counter(x_data):
-    #     temp = y_data[]
-    #     plt.plot(x_final_data, )
+def is_eirur(text):
     pass
+
 
 def extractLaw(text):
     reg_word = "חקיקה שאוזכרה"
@@ -344,9 +379,11 @@ def extractLaw(text):
     all_charges = []
     amount_appeard = []
     line_appeadr =[] #TODO Deduce from the line all apeared in which is previuously mentioned
-    for chrg in CHARGES:
+    for chrg in RELEVANT_CHARGES:
         if relevant != -1:
-            if relevant.find(chrg) != -1:
+            # print("chrg = ",type(chrg))
+            # if relevant.find(chrg) != -1:
+            if re.findall(text, chrg) != -1:
                 all_charges.append([chrg, text.count(chrg)])
                 amount_appeard.append(text.count(chrg))
     print("section = ", all_charges)
@@ -373,8 +410,9 @@ def extract_publish_dates(text):
     if len(matches) > 0:
         print("matches = ",matches[0][1])
         date = matches[0][1]
-        year = date.split(".")[2]
-        return (int)(year)
+        print("date = ",date)
+        day, month, year = date.split(".")
+        return [(int)(day),(int)(month),(int)(year)]
     else:
         global counter_noYearFound
         counter_noYearFound += 1
@@ -427,7 +465,7 @@ def fromVerdictsToDB():
     all_accused = []
 
     directory = VERDICTS_DIR               #text files eddition:
-    years = []
+    # years = []
     # years = [1998, 2006, 2009, 2006, 2006, 2004, 1999, 2000, 2005, 2000, 2015, 1994, 2001, 2016, 2005, 2001, 2001, 2001, 2003]
     counter = -1
     # print("years len = ", len(years))
@@ -436,10 +474,12 @@ def fromVerdictsToDB():
             counter +=1
             file_name = os.path.join(directory, filename)
             text = open(file_name, "r", encoding="utf-8").read()
-            years.append(extract_publish_dates(text))
+
             print("^^^ File is ", file_name, " ^^^")
-            print("filename = ",filename,"counter = ",counter,"year = ",years[counter])
-            db = pd.concat([db, extractParameters(text, db, years[counter], filename)])
+            # print("filename = ",filename,"counter = ",counter,"year = ",years[counter])
+            verd_line = extractParameters(text, db, filename)
+            if verd_line is not None:
+                db = pd.concat([db,verd_line ])
 
             # all_accused.append( accusedName(text))
             # #charges.append(extractLaw(text))
@@ -479,7 +519,7 @@ source = "https://www.nevo.co.il/PsikaSearchResults.aspx"
 text_searc = "C:\\Users\\oryiz\\Desktop\\MohrsStuff\\URLs From Nevo\\search1.txt"
 # get_all_URLS(source)
 # urls = get_urls_from_text_source(text_searc)
-CHARGES = ['345', '346', '347', '348', '349', '350', '351']
+RELEVANT_CHARGES = ['345', '346', '347', '348', '349', '350', '351']
 
 # fromVerdictsToDB(urls)
 
@@ -499,39 +539,115 @@ def from_search_to_local():
             else:
                 print("didn't work for: ",url)
 
-# ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm" - 1998,
-#         "https://www.nevo.co.il/psika_html/mechozi/m06000511-a.htm" - 2006,
-#         "https://www.nevo.co.il/psika_html/mechozi/ME-09-02-10574-380.htm" - 2009,
-#         "https://www.nevo.co.il/psika_html/mechozi/m06007004-660.htm" - 2006,
-#         "https://www.nevo.co.il/psika_html/mechozi/m06020001.htm" - 2006,
-#         "https://www.nevo.co.il/psika_html/shalom/s01003122-438.htm" - 2004,
-#         "https://www.nevo.co.il/psika_html/shalom/s981928.htm" - 1999,
-#         "https://www.nevo.co.il/psika_html/mechozi/m011190a.htm" - 2000,
-#         "https://www.nevo.co.il/psika_html/mechozi/m01000232.htm" - 2005,
-#         "https://www.nevo.co.il/psika_html/mechozi/m99934.htm" - 2000,
-#         "https://www.nevo.co.il/psika_html/mechozi/ME-12-01-13327-55.htm" - 2015,
-#         "https://www.nevo.co.il/psika_html/mechozi/me-93-76-a.htm" - 1994,
-#         "https://www.nevo.co.il/psika_html/mechozi/m01171.htm" - 2001,
-#         "https://www.nevo.co.il/psika_html/mechozi/ME-16-12-8398-11.htm" - 2016,
-#         "https://www.nevo.co.il/psika_html/mechozi/m01000405-a.htm" - 2005,
-#         "https://www.nevo.co.il/psika_html/mechozi/m00001039-148.htm" - 2001,
-#         "https://www.nevo.co.il/psika_html/mechozi/m001129.htm" - 2001,
-#         "https://www.nevo.co.il/psika_html/mechozi/m00000935-103.htm" - 2001,
-#         "https://www.nevo.co.il/psika_html/mechozi/ME-98-4124-HK.htm" - 2003
-#         ]
 
+
+#------------------ Real plots ---------------------------------#
+def plot_amount_per_param(batch, param,str_labels = False, should_revers = False, bar_plot = False, designated_lables = None):
+    curr_batch = batch.loc[batch[param] != '-1']
+    curr_batch = batch.loc[batch[param] != -1]
+    all_param = np.unique(batch[param])
+    amount_in_param = []
+    x_lables = []
+    for p in all_param:
+        print("p = ",p)
+        # if p == "פלוני" or p == "מדינת" :
+        amount_in_param.append(len(curr_batch.loc[batch[param] == p]))
+        if designated_lables == None:
+            if should_revers:
+                # p = p[::-1]
+                x_lables.append(p[len(p):len(p)-5:-1])
+            elif str_labels == False:
+                x_lables.append(round(p,3))
+            elif designated_lables == None:
+                x_lables.append(p)
+    if bar_plot == True:
+        plt.bar(np.arange(len(amount_in_param)), amount_in_param,color = "palevioletred")
+    else:
+        plt.plot(np.arange(len(amount_in_param)), amount_in_param,color = "palevioletred")
+    # plt.xlim(1985,2025)
+    if designated_lables != None:
+        x_lables = designated_lables
+    # if (str_labels):
+    #     plt.xticks(np.arange(len(all_param))[1:],labels=x_lables)
+    plt.xticks(np.arange(len(amount_in_param)), labels=x_lables)
+    plt.title("Amount of cases by "+param)
+    plt.xlabel(param)
+    plt.ylabel("amount of cases")
+    plt.show()
+
+def plot_amount_of_param_in_param(db, col_name, y_data = None, should_revers = False, designated_labels = None,should_revers_x_labels = False,bar_plot = False):
+    #get unique values in col:
+    unique_vals_x = list(Counter(db[col_name]).keys())
+    to_plot = []
+    x_labels = []
+
+    for i, value in enumerate(unique_vals_x):
+        # if (i < 7):
+        temp_db = db.loc[db[col_name] == unique_vals_x[i]]
+        if type(y_data) != str:
+            temp_db.sort_values(by=[y_data], inplace=True)
+        unique_vals_y = list(Counter(temp_db[y_data]).keys())
+        sum_vals_y = list(Counter(temp_db[y_data]).values())
+        # print("UV_y = ", unique_vals_y)
+        # print("SV_y = ", sum_vals_y)
+        # plt.scatter(unique_vals_y, sum_vals_y,label = value[::-1])
+        if should_revers_x_labels:
+            for x in unique_vals_y:
+                x_labels.append(x[len(x):len(x) - 5:-1])
+            plt.xticks(np.arange(len(x_labels)), labels=x_labels)
+
+        if bar_plot:
+            if designated_labels == None:
+                if should_revers:
+                    plt.bar(unique_vals_y, sum_vals_y, alpha=0.5, label=value[::-1])
+                else:
+                    plt.bar(unique_vals_y, sum_vals_y, alpha=0.5, label=value)
+            else:
+                plt.bar(unique_vals_y, sum_vals_y, alpha=0.5, label=designated_labels[i])
+        else:
+            if designated_labels == None:
+                if should_revers:
+                    plt.plot(unique_vals_y, sum_vals_y,alpha = 0.5,label = value[::-1])
+                else:
+                    plt.plot(unique_vals_y, sum_vals_y,alpha = 0.5,label = value)
+            else:
+                plt.plot(unique_vals_y, sum_vals_y, alpha=0.5, label=designated_labels[i])
+
+    plt.legend(loc = "best")
+    # plt.xlim(1985,2020)
+    plt.title("The amount of cases per "+str(col_name)+" per "+str(y_data))
+    plt.xlabel(y_data)
+    plt.ylabel("amount of cases")
+    plt.show()
+    # x_final_data = x_data
+    # if type(x_data[0]) is str:
+    #     m_dict = convert_str_to_int_dict(x_data)
+    #     x_final_data = [m_dict[x_data[i]] for i in range(len(x_data))]
+    # print("x_final_data = ",x_final_data)
+    #find years:
+    # all_yeras = Counter(y_data).keys()
+    # for yr in all_yeras:
+    #     count_by_years =
+    #
+    # for ftr,appr in Counter(x_data):
+    #     temp = y_data[]
+    #     plt.plot(x_final_data, )
+    pass
+
+#-------------------- main ---------------------#
 if __name__ == "__main__":
-    fromVerdictsToDB()
+    # fromVerdictsToDB()
     print("no year found = ",counter_noYearFound)
     print("no accused name found = ",no_accusedName)
     print("no district found = ",no_districtCounter)
     print("no compensation found = ",no_compensCounter)
     print("no charges found", no_chargesCounter)
+    print("no age found = ", no_ageCounter)
     # from_search_to_local()
-    # df = pd.read_csv("out4.csv", error_bad_lines= False)
-    # plot_amount_of_param_in_param(df,DISTRICT,YEAR)
-
-
+    df = pd.read_csv("out4.csv", error_bad_lines= False)
+    print(len(df))
+    # plot_amount_of_param_in_param(df,ASSULTED_GENDER,DISTRICT, designated_labels = ["Female","Male"], should_revers_x_labels= True,bar_plot= True)
+    plot_amount_per_param(df, JUDGE_NUM,bar_plot=True)#,str_labels= True, should_revers=True)
 # ------------------------ Demo plots -----------------------------#
 def demo_plot1():
     cities = ["Tel Aviv", "Jerusalem","Haifa","Be'er Sheva", "Nazareth"]
@@ -587,10 +703,24 @@ def demo_plot_4():
     plt.title("Average amount of sentences as factor\n of amount of judges")
     plt.show()
 
-#------------------ Real plots ---------------------------------#
-def plot_year_and_dist(batch):
-    batch = batch.loc[batch[YEAR] != '-1']
-    all_years = batch[YEAR]
-    all_dist = batch[DISTRICT]
 
-    plt.plot(all_years,all_dist)
+# ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm" - 1998,
+#         "https://www.nevo.co.il/psika_html/mechozi/m06000511-a.htm" - 2006,
+#         "https://www.nevo.co.il/psika_html/mechozi/ME-09-02-10574-380.htm" - 2009,
+#         "https://www.nevo.co.il/psika_html/mechozi/m06007004-660.htm" - 2006,
+#         "https://www.nevo.co.il/psika_html/mechozi/m06020001.htm" - 2006,
+#         "https://www.nevo.co.il/psika_html/shalom/s01003122-438.htm" - 2004,
+#         "https://www.nevo.co.il/psika_html/shalom/s981928.htm" - 1999,
+#         "https://www.nevo.co.il/psika_html/mechozi/m011190a.htm" - 2000,
+#         "https://www.nevo.co.il/psika_html/mechozi/m01000232.htm" - 2005,
+#         "https://www.nevo.co.il/psika_html/mechozi/m99934.htm" - 2000,
+#         "https://www.nevo.co.il/psika_html/mechozi/ME-12-01-13327-55.htm" - 2015,
+#         "https://www.nevo.co.il/psika_html/mechozi/me-93-76-a.htm" - 1994,
+#         "https://www.nevo.co.il/psika_html/mechozi/m01171.htm" - 2001,
+#         "https://www.nevo.co.il/psika_html/mechozi/ME-16-12-8398-11.htm" - 2016,
+#         "https://www.nevo.co.il/psika_html/mechozi/m01000405-a.htm" - 2005,
+#         "https://www.nevo.co.il/psika_html/mechozi/m00001039-148.htm" - 2001,
+#         "https://www.nevo.co.il/psika_html/mechozi/m001129.htm" - 2001,
+#         "https://www.nevo.co.il/psika_html/mechozi/m00000935-103.htm" - 2001,
+#         "https://www.nevo.co.il/psika_html/mechozi/ME-98-4124-HK.htm" - 2003
+#         ]
