@@ -8,6 +8,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from collections import Counter
 import pandas as pd
+from scipy.interpolate import interp1d
+from sklearn.metrics import r2_score
+import conllu
 import json
 import datefinder
 
@@ -144,7 +147,7 @@ def extractLaw(name,text):
     reg_word = "חקיקה שאוזכרה"
     # reg_word = "פסק ה*דין|הכרעו*ת (- )*דין"
     relevant = get_lines_after(text, reg_word, 10, 1)
-    print("relevant = ",relevant )
+    # print("relevant = ",relevant )
     all_charges = np.zeros(len(RELEVANT_CHARGES))
     amount_appeared = []
     try:
@@ -193,12 +196,12 @@ def courtArea(text):
         return dist
 
 def extract_dist_from_court(court):
-    print(district_dict)
+    # print(district_dict)
 
     print("court = ", court)
 
     for dist in district_dict:
-        print("districts = ", district_dict[dist])
+        # print("districts = ", district_dict[dist])
         if re.search(district_dict[dist], court):
             return dist
 
@@ -301,9 +304,11 @@ def extractParameters(text, db, case_name):
 
     elif accused_name == "פלוני":
         isAnonymous = True
+    print("isAnonym type = ",type(isAnonymous))
 
     if (accused_name != "מדינת"):
         minor = is_minor(text)
+        print("minor type = ",type(minor))
         # charges = -1
         charges =  extractLaw(case_name,text)
         db = db.append({'charges':charges},ignore_index=True)
@@ -384,14 +389,14 @@ def extractParameters(text, db, case_name):
         interestingWords(text)
         # ['case_num', 'year', 'court', 'charges', 'accused_name', 'lines_num'])
         # if np.sum(charges) != 0:
-        case_ftr = pd.DataFrame([[case_name, day,month,  year,   court,  district, level, county ,age, minor ,compens, accused_name, isAnonymous,
+        case_ftr = pd.DataFrame([[case_name, day,month,  year,   court,  district, level, county , minor ,age,compens, accused_name, isAnonymous,
                                   assultedGender, judges_amount, female_J, male_J,sexPerc, lines_num,
                                   charges[0],charges[1],charges[2],charges[3],charges[4],charges[5],charges[6]]],
 
-                                columns=['case_num',DAY, MONTH, YEAR, 'court',DISTRICT,'level','county',AGE, IS_MINOR ,'compensation','accused_name', IS_ANONYMOUS,
+                                columns=['case_num',DAY, MONTH, YEAR, 'court',DISTRICT,'level','county', IS_MINOR,AGE ,'compensation','accused_name', IS_ANONYMOUS,
                                          ASSULTED_GENDER,JUDGE_NUM,FEMALE_J_NUM,MALE_J_NUM,FEMALE_J_PERCENT,NUM_LINES,
                                          C345,C346,C347,C348,C349,C350,C351])
-                # db = pd..appended(case_ftr)
+        # db = pd..appended(case_ftr)
         return case_ftr
 
 def createNewDB():
@@ -461,9 +466,19 @@ def is_minor(text):
             if relevent_text.find(exp) != -1:
                 results[i] = text.count(exp)
         print("minor exp = ",results)
+        print("minor ret = ",True if np.sum(results) > 0 else False)
         return True if np.sum(results) > 0 else False
     else:
-        return -1
+        # relevent_lines = text.splitlines()[:30]
+        # relevent_text = "\n".join(relevent_lines)
+        # print("30 first lines = ",)
+        # for i, exp in enumerate(minors_expressions):
+        #     if relevent_text.find(exp) != -1:
+        #         results[i] = text.count(exp)
+        # print("minor exp = ",results)
+        # print("minor ret = ",True if np.sum(results) > 0 else False)
+        # return True if np.sum(results) > 0 else False
+        return "-1"
 
 
 # def extractLaw(text):
@@ -668,30 +683,41 @@ def plot_amount_per_param(batch, param,str_labels = False, should_revers = False
     plt.ylabel("amount of cases")
     plt.show()
 
+
 def plot_amount_of_param_in_param(db, different_plots_data, y_data = None, should_revers = False, designated_labels = None,
-                                  should_revers_x_labels = False, bar_plot = False, add_a_total = False):
+                                  should_revers_x_labels = False, bar_plot = False, add_a_total = False, designated_x_labels = False):
     #get unique values in col:
     unique_vals_x = list(Counter(db[different_plots_data]).keys())
     x_labels = []
     sum_vals = []
     # if add_a_total == True:
     #     total_dict = {}
-
+    # x_labels = set()
     for i, value in enumerate(unique_vals_x):
         # if (i < 7):
 
         if value != "-1":
             temp_db = db.loc[db[different_plots_data] == unique_vals_x[i]]
-            temp_db = temp_db.loc[temp_db[y_data] != -1]
+            if y_data == YEAR:
+                temp_db = temp_db.loc[temp_db[y_data] >= 2000]
 
-            if type(db[y_data][0]) != str: #TODO - SORT ALL BY THE SAME VALUES!!!!!!!!
-                temp_db.reset_index(inplace=True)
-                temp_db = temp_db.sort_values(by= y_data)
+            # if type(db[y_data][0]) != str: #TODO - SORT ALL BY THE SAME VALUES!!!!!!!! add a counter and an is str varaA
+            temp_db.reset_index(inplace = True)
+            temp_db = temp_db.sort_values(by = y_data)
 
-            sum_vals_y = list(Counter(temp_db[y_data]).values())
+
             unique_vals_y = list(Counter(temp_db[y_data]).keys())
-            print("UV_y = ", unique_vals_y)
-
+            # print("UV_y = ", unique_vals_y)
+            sum_vals_y = list(Counter(temp_db[y_data]).values())
+            for x in unique_vals_y:
+                if should_revers_x_labels:
+                    if x[::-1] not in x_labels:
+                    # x_labels.add(x)
+                        x_labels.append(x[::-1])
+                    # print(x[::-1])
+                else:
+                    if x not in x_labels:
+                        x_labels.append(x)
             if add_a_total:
                 sum_vals_y.append(sum_vals_y)
                 """all_keys = total_dict.keys()
@@ -706,9 +732,7 @@ def plot_amount_of_param_in_param(db, different_plots_data, y_data = None, shoul
             #     x_labels.append(value)
             # print("SV_y = ", sum_vals_y)
             # plt.scatter(unique_vals_y, sum_vals_y,label = value[::-1])
-            if should_revers_x_labels:
-                for x in unique_vals_y:
-                    x_labels.append(x[::-1])
+
             if bar_plot:
                 if designated_labels == None:
                     if should_revers:
@@ -719,28 +743,49 @@ def plot_amount_of_param_in_param(db, different_plots_data, y_data = None, shoul
                 else:
                     plt.bar(unique_vals_y, sum_vals_y, alpha=0.5, label=designated_labels[i])
             else:
-                if designated_labels == None:
-                    if should_revers:
-                        plt.plot(unique_vals_y, sum_vals_y,alpha = 0.5,label = value[::-1])
+                if (len(unique_vals_y) > 10):
+                #     x_new = np.linspace(0, 15, 2000)
+                #     y_new = interp1d(np.arange(len(unique_vals_y)), sum_vals_y)
+                #     # a_BSpline = interp.make_interp_spline(np.arange(len(unique_vals_y)), sum_vals_y)
+                #     # y_new = a_BSpline(x_new)
+                #     xnew = np.linspace(0, 15, num=41, endpoint=True)
+                #     plt.plot(x_new, y_new(x_new), label = value[::-1])
+                #     coefficient_of_dermination = r2_score(sum_vals_y, y_new(np.linspace(0, 15, len(sum_vals_y))))
+                #     print("for dist ",value," the r^2 val is: ",coefficient_of_dermination)
+                # plt.legend(loc = "best")
+                # plt.show()
+                    if designated_labels == None:
+                        if should_revers:
+                            plt.plot(unique_vals_y, sum_vals_y,alpha = 0.5,label = value[::-1])
+                        else:
+                            plt.plot(unique_vals_y, sum_vals_y,alpha = 0.5,label = value)
                     else:
-                        plt.plot(unique_vals_y, sum_vals_y,alpha = 0.5,label = value)
-                else:
-                    plt.plot(unique_vals_y, sum_vals_y, alpha=0.5, label=designated_labels[i])
-        if type(x_labels[0]) == str:
-            plt.xticks(np.arange(len(x_labels)), labels=x_labels)
-        else:
-            plt.xticks(x_labels)
+                        plt.plot(unique_vals_y, sum_vals_y, alpha=0.5, label=designated_labels[i])
 
+    # x_labels = np.sort(list(x_labels))
+    if type(x_labels) == str:
+        plt.xticks(np.arange(len(list(x_labels))), labels = x_labels)
+        # pass
+    else:
+        plt.xticks(np.arange(len(list(x_labels))), labels = x_labels)
+        # pass
+        # plt.xticks()
+    print("x_labels = ",x_labels)
     plt.legend(loc = "best")
+
     if add_a_total:
         total = sum(sum_vals_y)
         plt.plot(np.arange(len(total)), total)
 
-    if designated_labels:
+    if designated_x_labels:
         plt.xticks(np.arange(len(x_labels)), labels=designated_labels)
 
     if y_data == YEAR:
         plt.xlim(2000, 2020)
+        plt.xticks(np.arange(2000, 2020), labels = x_labels)
+
+    else:
+        plt.xlim(0, len(x_labels))
 
     # plt.xlim(0,7)
     plt.title("The amount of cases per " + str(different_plots_data) + " per " + str(y_data))
@@ -760,7 +805,6 @@ def plot_amount_of_param_in_param(db, different_plots_data, y_data = None, shoul
     # for ftr,appr in Counter(x_data):
     #     temp = y_data[]
     #     plt.plot(x_final_data, )
-    pass
     # from_search_to_local()
 
 #-------------------- main ---------------------#
@@ -769,11 +813,11 @@ county_dict = {}
 if __name__ == "__main__":
 
     # district_dict = {}
-    # with open('data.txt') as json_file:
-    #     district_dict = json.load(json_file)
+    with open('data.txt') as json_file:
+        district_dict = json.load(json_file)
     #
-    # with open('county_list.txt') as json_file:
-    #     county_dict = json.load(json_file)
+    with open('county_list.txt') as json_file:
+        county_dict = json.load(json_file)
     #
     # for d in district_dict:
     #     print("key = ",d, "values = ",district_dict[d])
@@ -789,9 +833,12 @@ if __name__ == "__main__":
     df = pd.read_csv("out4.csv", error_bad_lines= False)
     print(len(df))
 
-    plot_amount_of_param_in_param(df, IS_MINOR, "county",bar_plot=True, should_revers_x_labels=True)#, designated_labels=["FALSE","TRUE"])#, add_a_total=True)
+    # plot_amount_of_param_in_param(df, IS_MINOR, DISTRICT,bar_plot= True, should_revers_x_labels= True ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
+    plot_amount_of_param_in_param(df, ASSULTED_GENDER, YEAR, bar_plot= True)# ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
     # plot_amount_of_param_in_param(df, IS_ANONYMOUS, YEAR,designated_labels = ["ינולפ","םש שי"])
     # plot_amount_per_param(df, JUDGE_NUM,bar_plot=True)#,str_labels= True, should_revers=True)
+
+
 
 # ------------------------ Demo plots -----------------------------#
 def demo_plot1():
