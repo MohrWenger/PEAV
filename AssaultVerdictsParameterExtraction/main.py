@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from collections import Counter
 import pandas as pd
+import json
 import datefinder
 
 VERDICTS_DIR = "verdicts/"
@@ -29,14 +30,26 @@ MALE_J_NUM = "MALE_J_NUM"
 FEMALE_J_PERCENT = "FEMALE_J_PERCENT"
 ASSULTED_GENDER = "Assulted Gender"
 VIRGINS = ""
+IS_ANONYMOUS = "is anonymous"
+CLOSED_DOOR = "is closed door"
+IS_MINOR = "IS MINOR"
 
 YEAR_REG = r"([0-3]{0,1}[0-9]\/[0-2]{0,1}[0-9]\/[0-2]{0,1}[0-9]{1,3})|([0-3]{0,1}[0-9]\.[0-2]{0,1}[0-9]\.[0-2]{0,1}[0-9]{1,3})"
+
+C345 = '345'
+C346 = '346'
+C347 = '347'
+C348 = '348'
+C349 = '349'
+C350 = '350'
+C351 = '351'
 
 # TA = ת"\א
 # DIST_DICT = {"תל אביב":[],
 #              "באר שבע":[]}
 
 no_districtCounter = 0
+no_courtCounter = 0
 no_caseNameCounter = 0
 no_chargesCounter = 0
 no_compensCounter = 0
@@ -117,7 +130,8 @@ def get_lines_after(text, word, amount,startAfter, limit="eof"):
             relevant_lines = []
             if start < limit:
                 for i in range(amount):
-                    relevant_lines.append(t_by_lines[start + i])
+                    if start + i < limit:
+                        relevant_lines.append(t_by_lines[start + i])
                 # print("\n".join(relevant_lines))
                 return "\n".join(relevant_lines)
             else:
@@ -126,17 +140,27 @@ def get_lines_after(text, word, amount,startAfter, limit="eof"):
 
 ##############################PARAMETERS#######################################
 
-def extractLaw(text):
+def extractLaw(name,text):
     reg_word = "חקיקה שאוזכרה"
-    # reg_word = "פסק ה*דין"
-    relevant = get_lines_after(text, reg_word, 10, 2)
-    all_charges = []
+    # reg_word = "פסק ה*דין|הכרעו*ת (- )*דין"
+    relevant = get_lines_after(text, reg_word, 10, 1)
+    print("relevant = ",relevant )
+    all_charges = np.zeros(len(RELEVANT_CHARGES))
     amount_appeared = []
-    for chrg in CHARGES:
-        if relevant.find(chrg) != -1:
-            all_charges.append([chrg, text.count(chrg)])
-            amount_appeared.append(text.count(chrg))
-    # print("section = ", all_charges)
+    try:
+        for i,chrg in enumerate(RELEVANT_CHARGES):
+            if relevant != -1:
+                if re.search(relevant, chrg) != -1:
+                    all_charges[i] = text.count(chrg)
+                    # all_charges.append([chrg, text.count(chrg)])
+                    # amount_appeared.append(text.count(chrg))
+            else:
+                print("not find psak din in: ",name)
+        print("section = ", all_charges)
+
+    except:
+        print("An exception occurred")
+
     # print("appeared: ", amount_appeared)
     return all_charges
 
@@ -168,6 +192,27 @@ def courtArea(text):
     else:
         return dist
 
+def extract_dist_from_court(court):
+    print(district_dict)
+
+    print("court = ", court)
+
+    for dist in district_dict:
+        print("districts = ", district_dict[dist])
+        if re.search(district_dict[dist], court):
+            return dist
+
+    return -1
+
+def extract_county(dist, court):
+    # print(county_dict)
+    print("dist = ",dist)
+    print("court = ",court)
+    for c in county_dict:
+        print(county_dict[c])
+        if re.search(county_dict[c], dist) or re.search(county_dict[c], court):
+            return c
+    return -1
 
 def howManyLines(text):
     return len(text.split("."))
@@ -246,20 +291,26 @@ def isVictimMale(text):
 def extractParameters(text, db, case_name):
     #TODO : figure out how to limit the search area (ideas - number of lines, not in entioned laws, before discausion etc...)
     # think of a good structure to call each function of extraction and put the output in the correct column
+
     accused_name = accusedName(text)
     db = db.append({'accused_name': accused_name}, ignore_index=True)
+    isAnonymous = False
     if accused_name == -1:
         global no_accusedName
         no_accusedName += 1
 
-    if (accused_name != "מדינת"):
+    elif accused_name == "פלוני":
+        isAnonymous = True
 
-        charges = -1
-        # charges =  extractLaw(text)
-        # db = db.append({'charges':charges},ignore_index=True)
-        # if charges == -1:
-        #     global no_chargesCounter
-        #     no_chargesCounter += 1
+    if (accused_name != "מדינת"):
+        minor = is_minor(text)
+        # charges = -1
+        charges =  extractLaw(case_name,text)
+        db = db.append({'charges':charges},ignore_index=True)
+
+        if np.sum(charges) == 0:
+            global no_chargesCounter
+            no_chargesCounter += 1
 
         compens = compensation(text)
         db = db.append({'compensation':compens},ignore_index=True)
@@ -267,11 +318,25 @@ def extractParameters(text, db, case_name):
             global no_compensCounter
             no_compensCounter += 1
 
-        district = courtArea(text)
-        db = db.append({"district": district},ignore_index=True)
-        if district == -1:
-            global  no_districtCounter
-            no_districtCounter +=1
+        court = courtArea(text)
+        district = -1
+        level = -1
+        county = -1
+        db = db.append({"court": court},ignore_index=True)
+        if court == -1:
+            global  no_courtCounter
+            no_courtCounter +=1
+        else:
+            district = extract_dist_from_court(court)
+            print("found dist - ", district)
+            if district == -1:
+                global no_districtCounter
+                no_districtCounter += 1
+                district = court.split(" ")[1:][0]
+                print("not found dist - ",district)
+            level = court.split(" ")[0]
+
+            county = extract_county(district, court)
 
         age = ageOfVictim(text)
         db = db.append({AGE: age},ignore_index=True)
@@ -286,6 +351,9 @@ def extractParameters(text, db, case_name):
         if date != "-1":
             # print()
             day, month, year = date
+            day = int(day)
+            month = int(month)
+            year = int(year)
         else:
             day, month, year = [-1,-1,-1]
         db = db.append({YEAR: year},ignore_index=True)
@@ -314,20 +382,23 @@ def extractParameters(text, db, case_name):
             db = db.append({"Assulted Gender":assultedGender},ignore_index=True)
 
         interestingWords(text)
-        # ['case_num', 'year', 'district', 'charges', 'accused_name', 'lines_num'])
-        case_ftr = pd.DataFrame([[case_name, day,month,  year,   district,  age ,charges, compens, accused_name,
-                                  assultedGender, judges_amount, female_J, male_J,sexPerc, lines_num]],
-                                columns=['case_num',DAY, MONTH, YEAR, 'district',AGE, 'charges', 'compensation','accused_name',
-                                         ASSULTED_GENDER,JUDGE_NUM,FEMALE_J_NUM,MALE_J_NUM,FEMALE_J_PERCENT,'lines_num'])
-        # db = pd..appended(case_ftr)
+        # ['case_num', 'year', 'court', 'charges', 'accused_name', 'lines_num'])
+        # if np.sum(charges) != 0:
+        case_ftr = pd.DataFrame([[case_name, day,month,  year,   court,  district, level, county ,age, minor ,compens, accused_name, isAnonymous,
+                                  assultedGender, judges_amount, female_J, male_J,sexPerc, lines_num,
+                                  charges[0],charges[1],charges[2],charges[3],charges[4],charges[5],charges[6]]],
+
+                                columns=['case_num',DAY, MONTH, YEAR, 'court',DISTRICT,'level','county',AGE, IS_MINOR ,'compensation','accused_name', IS_ANONYMOUS,
+                                         ASSULTED_GENDER,JUDGE_NUM,FEMALE_J_NUM,MALE_J_NUM,FEMALE_J_PERCENT,NUM_LINES,
+                                         C345,C346,C347,C348,C349,C350,C351])
+                # db = pd..appended(case_ftr)
         return case_ftr
-    else:
-        return None
 
 def createNewDB():
     # create a xls file with the right columns as the parameters
     # TODO: idea to use a dictionary as the structure to create this DB
-    df = pd.DataFrame(columns=[CASE_NUM, DAY, MONTH, YEAR, DISTRICT, AGE ,CHARGES, COMPENSATION, ACCUSED_NAME, NUM_LINES])
+    df = pd.DataFrame()
+    # df = pd.DataFrame(columns=[CASE_NUM, DAY, MONTH, YEAR, DISTRICT, AGE ,CHARGES, COMPENSATION, ACCUSED_NAME, NUM_LINES])
     return df
 
 
@@ -369,29 +440,52 @@ def convert_str_to_int_dict(str_arr):
         return  new_dict
 
 def is_eirur(text):
-    pass
+    name = text.splitlines()[0]
+    print("name = ",name)
+    if name.find("ע\"פ") != -1:
+        return True
+    else:
+        return False
 
-
-def extractLaw(text):
+def is_minor(text):
+    # word = "קטין|קטינה|קטינים|קטינות"
     reg_word = "חקיקה שאוזכרה"
-    # reg_word = "פסק ה*דין"
-    relevant = get_lines_after(text, reg_word, 10, 3)
-    all_charges = []
-    amount_appeard = []
-    line_appeadr =[] #TODO Deduce from the line all apeared in which is previuously mentioned
-    for chrg in RELEVANT_CHARGES:
-        if relevant != -1:
-            # print("chrg = ",type(chrg))
-            # if relevant.find(chrg) != -1:
-            if re.findall(text, chrg) != -1:
-                all_charges.append([chrg, text.count(chrg)])
-                amount_appeard.append(text.count(chrg))
-    print("section = ", all_charges)
-    # print("appeared: ", amount_appeard)
-    if len(all_charges) > 0:
-        return all_charges
+
+    # reg_word = "פסק ה*דין|הכרעו*ת (- )*דין"
+    relevent_text = get_lines_after(text, reg_word, 50, 2)
+    #is female minor:
+    minors_expressions = ["קטינות","קטינה","קטינים","קטין","דלתיים סגורות"]
+    results = np.zeros(5)
+    if relevent_text!= -1:
+        for i, exp in enumerate(minors_expressions):
+            if relevent_text.find(exp) != -1:
+                results[i] = text.count(exp)
+        print("minor exp = ",results)
+        return True if np.sum(results) > 0 else False
     else:
         return -1
+
+
+# def extractLaw(text):
+#     reg_word = "חקיקה שאוזכרה"
+#     # reg_word = "פסק ה*דין"
+#     relevant = get_lines_after(text, reg_word, 10, 3)
+#     all_charges = []
+#     amount_appeard = []
+#     line_appeadr =[] #TODO Deduce from the line all apeared in which is previuously mentioned
+#     for chrg in RELEVANT_CHARGES:
+#         if relevant != -1:
+#             # print("chrg = ",type(chrg))
+#             # if relevant.find(chrg) != -1:
+#             if re.findall(text, chrg) != -1:
+#                 all_charges.append([chrg, text.count(chrg)])
+#                 amount_appeard.append(text.count(chrg))
+#     print("section = ", all_charges)
+#     # print("appeared: ", amount_appeard)
+#     if len(all_charges) > 0:
+#         return all_charges
+#     else:
+#         return -1
 
 def add_to_txt_db(url, text, court_type):
     name_file = url.strip("https://www.nevo.co.il/psika_html/"+court_type+"/")
@@ -457,12 +551,12 @@ database
 """
 def fromVerdictsToDB():
     db = createNewDB()
-    case_names = []
-    compens = []
-    districts = []
-    charges = []
-    lines_number = []
-    all_accused = []
+    # case_names = []
+    # compens = []
+    # districts = []
+    # charges = []
+    # lines_number = []
+    # all_accused = []
 
     directory = VERDICTS_DIR               #text files eddition:
     # years = []
@@ -520,10 +614,8 @@ text_searc = "C:\\Users\\oryiz\\Desktop\\MohrsStuff\\URLs From Nevo\\search1.txt
 # get_all_URLS(source)
 # urls = get_urls_from_text_source(text_searc)
 RELEVANT_CHARGES = ['345', '346', '347', '348', '349', '350', '351']
-
-# fromVerdictsToDB(urls)
-
-searches_results = ["search11.txt","search12.txt","search13.txt","search14.txt","search15.txt","search16.txt","search17.txt","search18.txt","search19.txt","search20.txt"]
+searches_results = ["search15.txt","search16.txt","search17.txt","search18.txt","search19.txt","search20.txt"]
+# searches_results = ["search11.txt","search12.txt","search13.txt","search14.txt","search15.txt","search16.txt","search17.txt","search18.txt","search19.txt","search20.txt"]
 
 def from_search_to_local():
     dir = "SearchResults\\"
@@ -531,14 +623,15 @@ def from_search_to_local():
         allURLS = get_urls_from_text_source(dir+serach)
         for url in allURLS:
             text = urlToText(url)
-            print("url = ",url)
-            if url.find("mechozi") > 0:
-                 add_to_txt_db(url,text,"mechozi")
-            elif url.find("shalom") > 0:
-                add_to_txt_db(url, text, "shalom")
-            else:
-                print("didn't work for: ",url)
-
+            if not is_eirur(text):
+                print("url = ",url)
+                if url.find("mechozi") > 0:
+                     add_to_txt_db(url,text,"mechozi")
+                elif url.find("shalom") > 0:
+                    add_to_txt_db(url, text, "shalom")
+                else:
+                    print("didn't work for: ",url)
+        print("finished with search: ", serach)
 
 
 #------------------ Real plots ---------------------------------#
@@ -575,47 +668,82 @@ def plot_amount_per_param(batch, param,str_labels = False, should_revers = False
     plt.ylabel("amount of cases")
     plt.show()
 
-def plot_amount_of_param_in_param(db, col_name, y_data = None, should_revers = False, designated_labels = None,should_revers_x_labels = False,bar_plot = False):
+def plot_amount_of_param_in_param(db, different_plots_data, y_data = None, should_revers = False, designated_labels = None,
+                                  should_revers_x_labels = False, bar_plot = False, add_a_total = False):
     #get unique values in col:
-    unique_vals_x = list(Counter(db[col_name]).keys())
-    to_plot = []
+    unique_vals_x = list(Counter(db[different_plots_data]).keys())
     x_labels = []
+    sum_vals = []
+    # if add_a_total == True:
+    #     total_dict = {}
 
     for i, value in enumerate(unique_vals_x):
         # if (i < 7):
-        temp_db = db.loc[db[col_name] == unique_vals_x[i]]
-        if type(y_data) != str:
-            temp_db.sort_values(by=[y_data], inplace=True)
-        unique_vals_y = list(Counter(temp_db[y_data]).keys())
-        sum_vals_y = list(Counter(temp_db[y_data]).values())
-        # print("UV_y = ", unique_vals_y)
-        # print("SV_y = ", sum_vals_y)
-        # plt.scatter(unique_vals_y, sum_vals_y,label = value[::-1])
-        if should_revers_x_labels:
-            for x in unique_vals_y:
-                x_labels.append(x[len(x):len(x) - 5:-1])
-            plt.xticks(np.arange(len(x_labels)), labels=x_labels)
 
-        if bar_plot:
-            if designated_labels == None:
-                if should_revers:
-                    plt.bar(unique_vals_y, sum_vals_y, alpha=0.5, label=value[::-1])
+        if value != "-1":
+            temp_db = db.loc[db[different_plots_data] == unique_vals_x[i]]
+            temp_db = temp_db.loc[temp_db[y_data] != -1]
+
+            if type(db[y_data][0]) != str: #TODO - SORT ALL BY THE SAME VALUES!!!!!!!!
+                temp_db.reset_index(inplace=True)
+                temp_db = temp_db.sort_values(by= y_data)
+
+            sum_vals_y = list(Counter(temp_db[y_data]).values())
+            unique_vals_y = list(Counter(temp_db[y_data]).keys())
+            print("UV_y = ", unique_vals_y)
+
+            if add_a_total:
+                sum_vals_y.append(sum_vals_y)
+                """all_keys = total_dict.keys()
+                for i, y in enumerate(sum_vals_y):
+                    if unique_vals_y[i] in all_keys:
+                        total_dict[unique_vals_y[i]] = sum_vals_y
+                    else:
+                        total_dict[unique_vals_y[i]] = sum_vals_y"""
+            # if should_revers_x_labels:
+            #     x_labels.append(value[::-1])
+            # else:
+            #     x_labels.append(value)
+            # print("SV_y = ", sum_vals_y)
+            # plt.scatter(unique_vals_y, sum_vals_y,label = value[::-1])
+            if should_revers_x_labels:
+                for x in unique_vals_y:
+                    x_labels.append(x[::-1])
+            if bar_plot:
+                if designated_labels == None:
+                    if should_revers:
+                        plt.bar(unique_vals_y, sum_vals_y, alpha=0.5, label=value[::-1])
+                    else:
+                        plt.bar(unique_vals_y, sum_vals_y, alpha=0.5, label=value)
+
                 else:
-                    plt.bar(unique_vals_y, sum_vals_y, alpha=0.5, label=value)
+                    plt.bar(unique_vals_y, sum_vals_y, alpha=0.5, label=designated_labels[i])
             else:
-                plt.bar(unique_vals_y, sum_vals_y, alpha=0.5, label=designated_labels[i])
+                if designated_labels == None:
+                    if should_revers:
+                        plt.plot(unique_vals_y, sum_vals_y,alpha = 0.5,label = value[::-1])
+                    else:
+                        plt.plot(unique_vals_y, sum_vals_y,alpha = 0.5,label = value)
+                else:
+                    plt.plot(unique_vals_y, sum_vals_y, alpha=0.5, label=designated_labels[i])
+        if type(x_labels[0]) == str:
+            plt.xticks(np.arange(len(x_labels)), labels=x_labels)
         else:
-            if designated_labels == None:
-                if should_revers:
-                    plt.plot(unique_vals_y, sum_vals_y,alpha = 0.5,label = value[::-1])
-                else:
-                    plt.plot(unique_vals_y, sum_vals_y,alpha = 0.5,label = value)
-            else:
-                plt.plot(unique_vals_y, sum_vals_y, alpha=0.5, label=designated_labels[i])
+            plt.xticks(x_labels)
 
     plt.legend(loc = "best")
-    # plt.xlim(1985,2020)
-    plt.title("The amount of cases per "+str(col_name)+" per "+str(y_data))
+    if add_a_total:
+        total = sum(sum_vals_y)
+        plt.plot(np.arange(len(total)), total)
+
+    if designated_labels:
+        plt.xticks(np.arange(len(x_labels)), labels=designated_labels)
+
+    if y_data == YEAR:
+        plt.xlim(2000, 2020)
+
+    # plt.xlim(0,7)
+    plt.title("The amount of cases per " + str(different_plots_data) + " per " + str(y_data))
     plt.xlabel(y_data)
     plt.ylabel("amount of cases")
     plt.show()
@@ -633,9 +761,23 @@ def plot_amount_of_param_in_param(db, col_name, y_data = None, should_revers = F
     #     temp = y_data[]
     #     plt.plot(x_final_data, )
     pass
+    # from_search_to_local()
 
 #-------------------- main ---------------------#
+district_dict = {}
+county_dict = {}
 if __name__ == "__main__":
+
+    # district_dict = {}
+    # with open('data.txt') as json_file:
+    #     district_dict = json.load(json_file)
+    #
+    # with open('county_list.txt') as json_file:
+    #     county_dict = json.load(json_file)
+    #
+    # for d in district_dict:
+    #     print("key = ",d, "values = ",district_dict[d])
+    #
     # fromVerdictsToDB()
     print("no year found = ",counter_noYearFound)
     print("no accused name found = ",no_accusedName)
@@ -646,8 +788,11 @@ if __name__ == "__main__":
     # from_search_to_local()
     df = pd.read_csv("out4.csv", error_bad_lines= False)
     print(len(df))
-    # plot_amount_of_param_in_param(df,ASSULTED_GENDER,DISTRICT, designated_labels = ["Female","Male"], should_revers_x_labels= True,bar_plot= True)
-    plot_amount_per_param(df, JUDGE_NUM,bar_plot=True)#,str_labels= True, should_revers=True)
+
+    plot_amount_of_param_in_param(df, IS_MINOR, "county",bar_plot=True, should_revers_x_labels=True)#, designated_labels=["FALSE","TRUE"])#, add_a_total=True)
+    # plot_amount_of_param_in_param(df, IS_ANONYMOUS, YEAR,designated_labels = ["ינולפ","םש שי"])
+    # plot_amount_per_param(df, JUDGE_NUM,bar_plot=True)#,str_labels= True, should_revers=True)
+
 # ------------------------ Demo plots -----------------------------#
 def demo_plot1():
     cities = ["Tel Aviv", "Jerusalem","Haifa","Be'er Sheva", "Nazareth"]
