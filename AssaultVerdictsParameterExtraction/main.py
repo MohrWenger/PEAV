@@ -4,13 +4,13 @@ import urllib.request
 import os
 import re
 import string
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 from collections import Counter
 import pandas as pd
-import datefinder
+# import datefinder
 
-VERDICTS_DIR = "verdicts/"
+VERDICTS_DIR = "verdicts_No_Eirur/"
 
 DISTRICT = "district"
 CASE_NUM = "case_num"
@@ -48,25 +48,24 @@ no_ageCounter = 0
 # If an extraction function doesn't find the parameter, we return -1
 
 ################# YAP #####################
-"""verdicts = "verdicts/"
-output = open("yap_inputs/input.txt", "w")
-for filename in os.listdir("verdicts/"):
-    file = open(verdicts + filename,"r").read()
-    output.write(filename)
-    sep_file = re.findall(r"[\w']+|[.,!?;-]", file)
-    text = "\n".join(sep_file)
-    correctly_spaced = text.replace(".", ".\n")
-    output.write(correctly_spaced)
-    output.write("\n")
-    output.write("\n")
-output.close()
+# output = open(VERDICTS_DIR + "/input.txt", "w")
+# for filename in os.listdir(VERDICTS_DIR):
+#     file = open(VERDICTS_DIR + filename,"r").read()
+#     output.write(filename)
+#     sep_file = re.findall(r"[\w']+|[.,!?;-]", file)
+#     text = "\n".join(sep_file)
+#     correctly_spaced = text.replace(".", ".\n")
+#     output.write(correctly_spaced)
+#     output.write("\n")
+#     output.write("\n")
+# output.close()
+#
+# file = open("/Users/tomkalir/Projects/yap/src/yap/output.conll","r").read()
+# num_of_male = len(re.findall("gen=M", file))
+# num_of_female = len(re.findall("gen=F", file))
+# print(num_of_female)
+# print(num_of_male)
 
-file = open("/Users/tomkalir/Projects/yap/src/yap/output.conll","r").read()
-num_of_male = len(re.findall("gen=M", file))
-num_of_female = len(re.findall("gen=F", file))
-print(num_of_female)
-print(num_of_male)
-"""
 ################# Generic Functions For Extraction ######################
 
 def allTheTextAfterAWord(text, word, until=-1):
@@ -464,22 +463,22 @@ def fromVerdictsToDB():
     lines_number = []
     all_accused = []
 
-    directory = VERDICTS_DIR               #text files eddition:
+    # directory = VERDICTS_DIR               #text files eddition:
     # years = []
     # years = [1998, 2006, 2009, 2006, 2006, 2004, 1999, 2000, 2005, 2000, 2015, 1994, 2001, 2016, 2005, 2001, 2001, 2001, 2003]
     counter = -1
     # print("years len = ", len(years))
-    for i, filename in enumerate(os.listdir(directory)):
-        if filename.endswith(".txt"):
-            counter +=1
-            file_name = os.path.join(directory, filename)
-            text = open(file_name, "r", encoding="utf-8").read()
-
-            print("^^^ File is ", file_name, " ^^^")
-            # print("filename = ",filename,"counter = ",counter,"year = ",years[counter])
-            verd_line = extractParameters(text, db, filename)
-            if verd_line is not None:
-                db = pd.concat([db,verd_line ])
+    # for i, filename in enumerate(os.listdir(directory)):
+    #     if filename.endswith(".txt"):
+    #         counter +=1
+    #         file_name = os.path.join(directory, filename)
+    #         text = open(file_name, "r", encoding="utf-8").read()
+    #
+    #         print("^^^ File is ", file_name, " ^^^")
+    #         # print("filename = ",filename,"counter = ",counter,"year = ",years[counter])
+    #         verd_line = extractParameters(text, db, filename)
+    #         if verd_line is not None:
+    #             db = pd.concat([db,verd_line ])
 
             # all_accused.append( accusedName(text))
             # #charges.append(extractLaw(text))
@@ -487,9 +486,9 @@ def fromVerdictsToDB():
             # districts.append( courtArea(text))
             # lines_number.append(howManyLines(text))
             # case_names.append(filename)
-        else:
-            continue
-    db.to_csv('out4.csv', encoding= 'utf-8')
+    #     else:
+    #         continue
+    # db.to_csv('out4.csv', encoding= 'utf-8')
     # db = db.append(pd.concat([pd.DataFrame([all_accused[i], [case_names[i]]],
     #                                        columns=['accused']) for i in range(len(years))],ignore_index=True))
     # db = db.append(pd.concat([pd.DataFrame([case_names[i]],
