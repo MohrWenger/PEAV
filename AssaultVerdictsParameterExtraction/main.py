@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 import urllib.request
+# import urllib2
 # import hebpipe
 import os
 import re
@@ -12,6 +13,7 @@ from scipy.interpolate import interp1d
 from sklearn.metrics import r2_score
 import conllu
 import json
+import glob
 import datefinder
 
 VERDICTS_DIR = "verdicts/"
@@ -408,7 +410,9 @@ def createNewDB():
 
 
 def urlToText(url):
-    webUrl = urllib.request.urlopen(url)
+    print("url = ",url)
+    webUrl = urllib2.urlopen("file://"+url)
+    # webUrl = urllib.request.urlopen("file://"+url)
     html = webUrl.read()
     # import urllib
     # webUrl = urllib.urlopen("https://www.nevo.co.il/psika_html/mechozi/ME-19-07-69765-55.htm").read()
@@ -546,6 +550,28 @@ def get_urls_from_text_source(text_source):
     print(urls)
     return urls
 
+def htmlToText(dir, filename):
+
+        html = open(dir + filename, "rb").read()
+        soup = BeautifulSoup(html, features="html.parser", from_encoding= 'utf-8-sig')
+
+        # kill all script and style elements
+        for script in soup(["script", "style"]):
+            script.extract()    # rip it out
+
+        # get text
+        text = soup.get_text()
+
+        # break into lines and remove leading and trailing space on each
+        lines = (line.strip() for line in text.splitlines())
+        # break multi-headlines into a line each
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        # drop blank lines
+        text = '\n'.join(chunk for chunk in chunks if chunk)
+        # print(soup.original_encoding)
+        # print(text)
+        return text
+
 def get_all_URLS(source):
     content = urllib.request.urlopen(source)
     html = content.read()
@@ -631,6 +657,13 @@ text_searc = "C:\\Users\\oryiz\\Desktop\\MohrsStuff\\URLs From Nevo\\search1.txt
 RELEVANT_CHARGES = ['345', '346', '347', '348', '349', '350', '351']
 searches_results = ["search15.txt","search16.txt","search17.txt","search18.txt","search19.txt","search20.txt"]
 # searches_results = ["search11.txt","search12.txt","search13.txt","search14.txt","search15.txt","search16.txt","search17.txt","search18.txt","search19.txt","search20.txt"]
+
+def from_html_dir_to_text():
+    dir = "C:\\Users\\oryiz\\PycharmProjects\\PEAV\\AssaultVerdictsParameterExtraction\\html"
+    for filepath in glob.iglob(dir+"/*.htm"):
+        print("p =",filepath)
+        text = htmlToText(dir, "\\"+filepath[76:])
+        add_to_txt_db(filepath[76:], text, "")
 
 def from_search_to_local():
     dir = "SearchResults\\"
@@ -811,7 +844,7 @@ def plot_amount_of_param_in_param(db, different_plots_data, y_data = None, shoul
 district_dict = {}
 county_dict = {}
 if __name__ == "__main__":
-
+    # from_html_dir_to_text()
     # district_dict = {}
     with open('data.txt') as json_file:
         district_dict = json.load(json_file)
@@ -834,7 +867,7 @@ if __name__ == "__main__":
     print(len(df))
 
     # plot_amount_of_param_in_param(df, IS_MINOR, DISTRICT,bar_plot= True, should_revers_x_labels= True ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
-    plot_amount_of_param_in_param(df, ASSULTED_GENDER, YEAR, bar_plot= True)# ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
+    plot_amount_of_param_in_param(df, DISTRICT, YEAR, should_revers_x_labels = True)# ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
     # plot_amount_of_param_in_param(df, IS_ANONYMOUS, YEAR,designated_labels = ["ינולפ","םש שי"])
     # plot_amount_per_param(df, JUDGE_NUM,bar_plot=True)#,str_labels= True, should_revers=True)
 
