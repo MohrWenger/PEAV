@@ -4,15 +4,15 @@ import urllib.request
 import os
 import re
 import string
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 from collections import Counter
 import pandas as pd
 from scipy.interpolate import interp1d
 from sklearn.metrics import r2_score
-import conllu
+# import conllu
 import json
-import datefinder
+# import datefinder
 
 VERDICTS_DIR = "verdicts/"
 
@@ -64,25 +64,25 @@ no_ageCounter = 0
 # If an extraction function doesn't find the parameter, we return -1
 
 ################# YAP #####################
-"""verdicts = "verdicts/"
-output = open("yap_inputs/input.txt", "w")
-for filename in os.listdir("verdicts/"):
-    file = open(verdicts + filename,"r").read()
-    output.write(filename)
-    sep_file = re.findall(r"[\w']+|[.,!?;-]", file)
-    text = "\n".join(sep_file)
-    correctly_spaced = text.replace(".", ".\n")
-    output.write(correctly_spaced)
-    output.write("\n")
-    output.write("\n")
-output.close()
+# verdicts = "verdicts/"
+# output = open("yap_inputs/input.txt", "w")
+# for filename in os.listdir("verdicts/"):
+#     file = open(verdicts + filename,"r").read()
+#     output.write(filename)
+#     sep_file = re.findall(r"[\w']+|[.,!?;-]", file)
+#     text = "\n".join(sep_file)
+#     correctly_spaced = text.replace(".", ".\n")
+#     output.write(correctly_spaced)
+#     output.write("\n")
+#     output.write("\n")
+# output.close()
+#
+# file = open("/Users/tomkalir/Projects/yap/src/yap/output.conll","r").read()
+# num_of_male = len(re.findall("gen=M", file))
+# num_of_female = len(re.findall("gen=F", file))
+# print(num_of_female)
+# print(num_of_male)
 
-file = open("/Users/tomkalir/Projects/yap/src/yap/output.conll","r").read()
-num_of_male = len(re.findall("gen=M", file))
-num_of_female = len(re.findall("gen=F", file))
-print(num_of_female)
-print(num_of_male)
-"""
 ################# Generic Functions For Extraction ######################
 
 def allTheTextAfterAWord(text, word, until=-1):
@@ -407,30 +407,102 @@ def createNewDB():
     return df
 
 
-def urlToText(url):
-    webUrl = urllib.request.urlopen(url)
-    html = webUrl.read()
-    # import urllib
-    # webUrl = urllib.urlopen("https://www.nevo.co.il/psika_html/mechozi/ME-19-07-69765-55.htm").read()
-    # html = html_1.decode('utf-8')
-    soup = BeautifulSoup(html, features="html.parser", from_encoding= 'utf-8-sig')
+def htmlToText():
+    all = 0
+    not_good = 0
+    for filename in os.listdir("/Users/tomkalir/Downloads/igud1202/html/"):
+        html = open("/Users/tomkalir/Downloads/igud1202/html/" + filename, "rb").read()
+        soup = BeautifulSoup(html, features="html.parser", from_encoding='utf-8-sig')
 
-    # kill all script and style elements
-    for script in soup(["script", "style"]):
-        script.extract()    # rip it out
+        # kill all script and style elements
+        for script in soup(["script", "style"]):
+            script.extract()    # rip it out
 
-    # get text
-    text = soup.get_text()
+        # get text
+        text = soup.get_text()
 
-    # break into lines and remove leading and trailing space on each
-    lines = (line.strip() for line in text.splitlines())
-    # break multi-headlines into a line each
-    chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-    # drop blank lines
-    text = '\n'.join(chunk for chunk in chunks if chunk)
-    print(soup.original_encoding)
-    print(text)
-    return text
+        # break into lines and remove leading and trailing space on each
+        lines = (line.strip() for line in text.splitlines())
+        # break multi-headlines into a line each
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        # drop blank lines
+        text = '\n'.join(chunk for chunk in chunks if chunk)
+        # print(soup.original_encoding)
+        # print(text)
+        nums = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
+         "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24",
+         "אחד", "שתים", "שתיים", "שלוש", "ארבע", "חמש", "שש", "שבע", "שמונה", "תשע",
+         "עשר", "אחת", "שנים", "שניים", "", "חמישה", "", "שישה"]
+        sentences = []
+        if text.find("גזר דין") != -1:
+            all += 1
+            print("######################" + filename + "#######################")
+            indices = [m.start() for m in re.finditer("מאסר", text)]
+            for x in re.finditer("שירות", text):
+                indices.append(x.start())
+            for i in indices:
+                start = text.rfind(".", 0, i)
+                end = text.find(".", i, len(text))
+                sentence = text[start:end]
+                # print(sentence)
+                if sentence.find(":") != -1 and sentence.find("\"") != -1:  # maybe this is a quote?
+                    continue
+                if sentence.find("עונשין") != -1 and sentence.find("יעבור") == -1:
+                    continue
+                for duration in ["חודש", "שנה", "שנים", "שנות", "שעות"]:
+                    if sentence.find(duration) != -1:
+                        sentences.append(sentence)
+            found = False
+            for sentence in sentences:
+                if sentence.find("בפועל") != -1:
+                    found = True
+                    print(sentence)
+                    break
+                if sentence.find("תנאי") != -1:
+                    found = True
+                    print(sentence)
+                    break
+                if sentence.find("שירות") != -1:
+                    found = True
+                    print(sentence)
+                    break
+            if not found:
+                not_good+=1
+                print("HERE")
+                print(sentences)
+        print(all)
+        print(not_good)
+
+        # if text.find("גזר דין") != -1:
+        #     print("######################" + filename + "#######################")
+        #     indices = [m.start() for m in re.finditer("מאסר", text)]
+        #     for i in indices[-5:]:
+        #         start = text.rfind(".", 0, i)
+        #         end = text.find(".", i, len(text))
+        #         sentence = text[start:end]
+        #         if sentence.find("\"") != -1:
+        #             continue
+        #         if sentence.find("עונשין") != -1:
+        #             continue
+        #         found = False
+        #         if sentence.find("בפועל") != -1:
+        #             for duration in ["חודש", "שנה", "שנים", "שנות"]:
+        #                 if sentence.find(duration) != -1:
+        #                     found = True
+        #             if found:
+        #                 print(sentence)
+        #                 break
+        #         for duration in ["חודש", "שנה", "שנים"]:
+        #             if sentence.find(duration) != -1:
+        #                 found = True
+        #         if found:
+        #             print("HERE")
+        #             print(text[start:end])
+        #             break
+htmlToText()
+
+
+
 
 # urlToText("https://www.nevo.co.il/psika_html/mechozi/ME-98-4124-HK.htm")
 # urlToText("https://www.nevo.co.il/psika_html/mechozi/ME-17-12-378-33.htm")
@@ -632,21 +704,21 @@ RELEVANT_CHARGES = ['345', '346', '347', '348', '349', '350', '351']
 searches_results = ["search15.txt","search16.txt","search17.txt","search18.txt","search19.txt","search20.txt"]
 # searches_results = ["search11.txt","search12.txt","search13.txt","search14.txt","search15.txt","search16.txt","search17.txt","search18.txt","search19.txt","search20.txt"]
 
-def from_search_to_local():
-    dir = "SearchResults\\"
-    for serach in searches_results:
-        allURLS = get_urls_from_text_source(dir+serach)
-        for url in allURLS:
-            text = urlToText(url)
-            if not is_eirur(text):
-                print("url = ",url)
-                if url.find("mechozi") > 0:
-                     add_to_txt_db(url,text,"mechozi")
-                elif url.find("shalom") > 0:
-                    add_to_txt_db(url, text, "shalom")
-                else:
-                    print("didn't work for: ",url)
-        print("finished with search: ", serach)
+# def from_search_to_local():
+#     dir = "SearchResults\\"
+#     for serach in searches_results:
+#         allURLS = get_urls_from_text_source(dir+serach)
+#         for url in allURLS:
+#             text = urlToText(url)
+#             if not is_eirur(text):
+#                 print("url = ",url)
+#                 if url.find("mechozi") > 0:
+#                      add_to_txt_db(url,text,"mechozi")
+#                 elif url.find("shalom") > 0:
+#                     add_to_txt_db(url, text, "shalom")
+#                 else:
+#                     print("didn't work for: ",url)
+#         print("finished with search: ", serach)
 
 
 #------------------ Real plots ---------------------------------#
@@ -808,30 +880,30 @@ def plot_amount_of_param_in_param(db, different_plots_data, y_data = None, shoul
     # from_search_to_local()
 
 #-------------------- main ---------------------#
-district_dict = {}
-county_dict = {}
-if __name__ == "__main__":
-
-    # district_dict = {}
-    with open('data.txt') as json_file:
-        district_dict = json.load(json_file)
-    #
-    with open('county_list.txt') as json_file:
-        county_dict = json.load(json_file)
-    #
-    # for d in district_dict:
-    #     print("key = ",d, "values = ",district_dict[d])
-    #
-    # fromVerdictsToDB()
-    print("no year found = ",counter_noYearFound)
-    print("no accused name found = ",no_accusedName)
-    print("no district found = ",no_districtCounter)
-    print("no compensation found = ",no_compensCounter)
-    print("no charges found", no_chargesCounter)
-    print("no age found = ", no_ageCounter)
-    # from_search_to_local()
-    df = pd.read_csv("out4.csv", error_bad_lines= False)
-    print(len(df))
+# district_dict = {}
+# county_dict = {}
+# if __name__ == "__main__":
+#
+#     # district_dict = {}
+#     with open('data.txt') as json_file:
+#         district_dict = json.load(json_file)
+#     #
+#     with open('county_list.txt') as json_file:
+#         county_dict = json.load(json_file)
+#     #
+#     # for d in district_dict:
+#     #     print("key = ",d, "values = ",district_dict[d])
+#     #
+#     # fromVerdictsToDB()
+#     print("no year found = ",counter_noYearFound)
+#     print("no accused name found = ",no_accusedName)
+#     print("no district found = ",no_districtCounter)
+#     print("no compensation found = ",no_compensCounter)
+#     print("no charges found", no_chargesCounter)
+#     print("no age found = ", no_ageCounter)
+#     # from_search_to_local()
+#     df = pd.read_csv("out4.csv", error_bad_lines= False)
+#     print(len(df))
 
     # plot_amount_of_param_in_param(df, IS_MINOR, DISTRICT,bar_plot= True, should_revers_x_labels= True ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
     plot_amount_of_param_in_param(df, ASSULTED_GENDER, YEAR, bar_plot= True)# ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
