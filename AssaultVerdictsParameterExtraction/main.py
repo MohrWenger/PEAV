@@ -1,18 +1,20 @@
 from bs4 import BeautifulSoup
 import urllib.request
+# import urllib2
 # import hebpipe
 import os
 import re
 import string
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import numpy as np
 from collections import Counter
 import pandas as pd
 from scipy.interpolate import interp1d
 from sklearn.metrics import r2_score
-# import conllu
+import conllu
 import json
-# import datefinder
+import glob
+import datefinder
 
 VERDICTS_DIR = "verdicts/"
 
@@ -64,25 +66,25 @@ no_ageCounter = 0
 # If an extraction function doesn't find the parameter, we return -1
 
 ################# YAP #####################
-# verdicts = "verdicts/"
-# output = open("yap_inputs/input.txt", "w")
-# for filename in os.listdir("verdicts/"):
-#     file = open(verdicts + filename,"r").read()
-#     output.write(filename)
-#     sep_file = re.findall(r"[\w']+|[.,!?;-]", file)
-#     text = "\n".join(sep_file)
-#     correctly_spaced = text.replace(".", ".\n")
-#     output.write(correctly_spaced)
-#     output.write("\n")
-#     output.write("\n")
-# output.close()
-#
-# file = open("/Users/tomkalir/Projects/yap/src/yap/output.conll","r").read()
-# num_of_male = len(re.findall("gen=M", file))
-# num_of_female = len(re.findall("gen=F", file))
-# print(num_of_female)
-# print(num_of_male)
+"""verdicts = "verdicts/"
+output = open("yap_inputs/input.txt", "w")
+for filename in os.listdir("verdicts/"):
+    file = open(verdicts + filename,"r").read()
+    output.write(filename)
+    sep_file = re.findall(r"[\w']+|[.,!?;-]", file)
+    text = "\n".join(sep_file)
+    correctly_spaced = text.replace(".", ".\n")
+    output.write(correctly_spaced)
+    output.write("\n")
+    output.write("\n")
+output.close()
 
+file = open("/Users/tomkalir/Projects/yap/src/yap/output.conll","r").read()
+num_of_male = len(re.findall("gen=M", file))
+num_of_female = len(re.findall("gen=F", file))
+print(num_of_female)
+print(num_of_male)
+"""
 ################# Generic Functions For Extraction ######################
 
 def allTheTextAfterAWord(text, word, until=-1):
@@ -704,21 +706,21 @@ RELEVANT_CHARGES = ['345', '346', '347', '348', '349', '350', '351']
 searches_results = ["search15.txt","search16.txt","search17.txt","search18.txt","search19.txt","search20.txt"]
 # searches_results = ["search11.txt","search12.txt","search13.txt","search14.txt","search15.txt","search16.txt","search17.txt","search18.txt","search19.txt","search20.txt"]
 
-# def from_search_to_local():
-#     dir = "SearchResults\\"
-#     for serach in searches_results:
-#         allURLS = get_urls_from_text_source(dir+serach)
-#         for url in allURLS:
-#             text = urlToText(url)
-#             if not is_eirur(text):
-#                 print("url = ",url)
-#                 if url.find("mechozi") > 0:
-#                      add_to_txt_db(url,text,"mechozi")
-#                 elif url.find("shalom") > 0:
-#                     add_to_txt_db(url, text, "shalom")
-#                 else:
-#                     print("didn't work for: ",url)
-#         print("finished with search: ", serach)
+def from_search_to_local():
+    dir = "SearchResults\\"
+    for serach in searches_results:
+        allURLS = get_urls_from_text_source(dir+serach)
+        for url in allURLS:
+            text = urlToText(url)
+            if not is_eirur(text):
+                print("url = ",url)
+                if url.find("mechozi") > 0:
+                     add_to_txt_db(url,text,"mechozi")
+                elif url.find("shalom") > 0:
+                    add_to_txt_db(url, text, "shalom")
+                else:
+                    print("didn't work for: ",url)
+        print("finished with search: ", serach)
 
 
 #------------------ Real plots ---------------------------------#
@@ -880,30 +882,30 @@ def plot_amount_of_param_in_param(db, different_plots_data, y_data = None, shoul
     # from_search_to_local()
 
 #-------------------- main ---------------------#
-# district_dict = {}
-# county_dict = {}
-# if __name__ == "__main__":
-#
-#     # district_dict = {}
-#     with open('data.txt') as json_file:
-#         district_dict = json.load(json_file)
-#     #
-#     with open('county_list.txt') as json_file:
-#         county_dict = json.load(json_file)
-#     #
-#     # for d in district_dict:
-#     #     print("key = ",d, "values = ",district_dict[d])
-#     #
-#     # fromVerdictsToDB()
-#     print("no year found = ",counter_noYearFound)
-#     print("no accused name found = ",no_accusedName)
-#     print("no district found = ",no_districtCounter)
-#     print("no compensation found = ",no_compensCounter)
-#     print("no charges found", no_chargesCounter)
-#     print("no age found = ", no_ageCounter)
-#     # from_search_to_local()
-#     df = pd.read_csv("out4.csv", error_bad_lines= False)
-#     print(len(df))
+district_dict = {}
+county_dict = {}
+if __name__ == "__main__":
+
+    # district_dict = {}
+    with open('data.txt') as json_file:
+        district_dict = json.load(json_file)
+    #
+    with open('county_list.txt') as json_file:
+        county_dict = json.load(json_file)
+    #
+    # for d in district_dict:
+    #     print("key = ",d, "values = ",district_dict[d])
+    #
+    # fromVerdictsToDB()
+    print("no year found = ",counter_noYearFound)
+    print("no accused name found = ",no_accusedName)
+    print("no district found = ",no_districtCounter)
+    print("no compensation found = ",no_compensCounter)
+    print("no charges found", no_chargesCounter)
+    print("no age found = ", no_ageCounter)
+    # from_search_to_local()
+    df = pd.read_csv("out4.csv", error_bad_lines= False)
+    print(len(df))
 
     # plot_amount_of_param_in_param(df, IS_MINOR, DISTRICT,bar_plot= True, should_revers_x_labels= True ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
     plot_amount_of_param_in_param(df, ASSULTED_GENDER, YEAR, bar_plot= True)# ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
