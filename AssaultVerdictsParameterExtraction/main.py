@@ -192,6 +192,8 @@ def compensation(text):  # TODO: in one instance finds the salary instead of com
 
 def courtArea(text):
     dist =  findBetweenParentheses(text)
+    text = text.splitlines()[4]
+    print("court text = ",text)
     if any(i.isdigit() for i in dist):
         return -1
     else:
@@ -303,8 +305,11 @@ def extractParameters(text, db, case_name):
     if accused_name == -1:
         global no_accusedName
         no_accusedName += 1
+    else:
+        accused_name = accused_name.split("\n")[0]
+        print("accused = ", accused_name)
 
-    elif accused_name == "פלוני":
+    if accused_name == "פלוני":
         isAnonymous = True
     print("isAnonym type = ",type(isAnonymous))
 
@@ -339,10 +344,13 @@ def extractParameters(text, db, case_name):
             if district == -1:
                 global no_districtCounter
                 no_districtCounter += 1
-                district = court.split(" ")[1:][0]
                 print("not found dist - ",district)
+                print("len - ",len(court.split(" ")))
+                if len(court.split(" "))> 1:
+                    district = court.split(" ")[1:][0]
+                else:
+                    district = court.split(" ")[0]
             level = court.split(" ")[0]
-
             county = extract_county(district, court)
 
         age = ageOfVictim(text)
@@ -411,8 +419,8 @@ def createNewDB():
 
 def urlToText(url):
     print("url = ",url)
-    webUrl = urllib2.urlopen("file://"+url)
-    # webUrl = urllib.request.urlopen("file://"+url)
+    # webUrl = urllib2.urlopen("file://"+url)
+    webUrl = urllib.request.urlopen("file://"+url)
     html = webUrl.read()
     # import urllib
     # webUrl = urllib.urlopen("https://www.nevo.co.il/psika_html/mechozi/ME-19-07-69765-55.htm").read()
@@ -436,6 +444,29 @@ def urlToText(url):
     print(text)
     return text
 
+def is_psak_din(filename, text):
+    print("filename = ", filename)
+    psak = False
+    reg_word = "פסק ה*דין|הכרעו*ת (- )*דין"
+    gzar_reg = "גזר ה*דין"
+    file_name = re.compile(filename)
+    if (re.search(reg_word,text)):
+        print("re search vals = ", re.search(gzar_reg, text))
+        psak = True
+    if (re.search(gzar_reg,text)):
+        print("re search vals = ",re.search(gzar_reg,text))
+        psak = False
+    elif filter(file_name.match, verdicts_list):
+        print("re search vals not found",re.search(reg_word,text))
+        psak = True
+    elif filter(file_name.match, gzar_list):
+        psak = False
+    else:
+        print("I didnt really know")
+    return psak
+        #         return False
+
+
 # urlToText("https://www.nevo.co.il/psika_html/mechozi/ME-98-4124-HK.htm")
 # urlToText("https://www.nevo.co.il/psika_html/mechozi/ME-17-12-378-33.htm")
 
@@ -450,7 +481,7 @@ def convert_str_to_int_dict(str_arr):
 
 def is_eirur(text):
     name = text.splitlines()[0]
-    print("name = ",name)
+    print("first line = ",name)
     if name.find("ע\"פ") != -1:
         return True
     else:
@@ -609,14 +640,17 @@ def fromVerdictsToDB():
             counter +=1
             file_name = os.path.join(directory, filename)
             text = open(file_name, "r", encoding="utf-8").read()
+            if (is_psak_din(filename,text)):
+                print("^^^ File is ", file_name, " ^^^")
+                # print("filename = ",filename,"counter = ",counter,"year = ",years[counter])
+                verd_line = extractParameters(text, db, filename)
+                if verd_line is not None:
+                    db = pd.concat([db,verd_line ])
+            else:
+                print("^^^ File is ", file_name, " ^^^ - not psak")
+                pass
 
-            print("^^^ File is ", file_name, " ^^^")
-            # print("filename = ",filename,"counter = ",counter,"year = ",years[counter])
-            verd_line = extractParameters(text, db, filename)
-            if verd_line is not None:
-                db = pd.concat([db,verd_line ])
-
-            # all_accused.append( accusedName(text))
+                # all_accused.append( accusedName(text))
             # #charges.append(extractLaw(text))
             # compens.append(compensation(text))
             # districts.append( courtArea(text))
@@ -732,7 +766,8 @@ def plot_amount_of_param_in_param(db, different_plots_data, y_data = None, shoul
         if value != "-1":
             temp_db = db.loc[db[different_plots_data] == unique_vals_x[i]]
             if y_data == YEAR:
-                temp_db = temp_db.loc[temp_db[y_data] >= 2000]
+                # temp_db = temp_db.loc[temp_db[y_data] >= 2000]
+                pass
 
             # if type(db[y_data][0]) != str: #TODO - SORT ALL BY THE SAME VALUES!!!!!!!! add a counter and an is str varaA
             temp_db.reset_index(inplace = True)
@@ -740,7 +775,7 @@ def plot_amount_of_param_in_param(db, different_plots_data, y_data = None, shoul
 
 
             unique_vals_y = list(Counter(temp_db[y_data]).keys())
-            # print("UV_y = ", unique_vals_y)
+            print("For ",value," years found = ", unique_vals_y)
             sum_vals_y = list(Counter(temp_db[y_data]).values())
             for x in unique_vals_y:
                 if should_revers_x_labels:
@@ -840,22 +875,79 @@ def plot_amount_of_param_in_param(db, different_plots_data, y_data = None, shoul
     #     plt.plot(x_final_data, )
     # from_search_to_local()
 
+def create_final_and_verd_list():
+    all_lists = pd.read_csv("Verd_and_final - Sheet1.csv")
+    verdicts_list = all_lists["verdicts"]
+    final_verd_list = []
+    counter_verd = 0
+    for v in verdicts_list:
+        # print(v)
+        if type(v) == str:
+            if v.find("https://www.nevo.co.il/psika_word/shalom/") > -1:
+                v = v.replace("https://www.nevo.co.il/psika_word/shalom/","")
+                print(v)
+
+            elif v.find("https://www.nevo.co.il/psika_word/mechozi/") > -1:
+                v = v.replace("https://www.nevo.co.il/psika_word/mechozi/","")
+                print(v)
+
+            else:
+                print("not added v:")
+            v = v.replace(".doc",".txt")
+            counter_verd += 1
+            final_verd_list.append(v)
+    print("counter_verd = ",counter_verd)
+    with open('verdict_list.txt', 'w') as outfile:
+        json.dump(final_verd_list, outfile)
+
+    gzar_list = all_lists["final_des"]
+    final_gzar_list = []
+    counter_gzar = 0
+    for g in gzar_list:
+        if type(g) == str:
+
+            if g.find("https://www.nevo.co.il/psika_word/shalom/") > -1:
+                g = g.replace("https://www.nevo.co.il/psika_word/shalom/","")
+
+            elif g.find("https://www.nevo.co.il/psika_word/mechozi/") >-1:
+                g = g.replace("https://www.nevo.co.il/psika_word/mechozi/","")
+            else:
+                print("not added v:")
+            g = g.replace(".doc",".txt")
+
+            final_gzar_list.append(g)
+            counter_gzar +=1
+    print("counter_gzar = ", counter_gzar)
+    with open('sentence_list.txt', 'w') as outfile:
+        json.dump(final_gzar_list, outfile)
+
 #-------------------- main ---------------------#
 district_dict = {}
 county_dict = {}
+verdicts_list = []
+gzar_list = []
 if __name__ == "__main__":
     # from_html_dir_to_text()
     # district_dict = {}
+    # create_final_and_verd_list()
     with open('data.txt') as json_file:
         district_dict = json.load(json_file)
     #
     with open('county_list.txt') as json_file:
         county_dict = json.load(json_file)
     #
+
+    with open('verdict_list.txt') as json_file:
+        verdicts_list = json.load(json_file)
+    #
+
+    with open('sentence_list.txt') as json_file:
+        gzar_list = json.load(json_file)
+
     # for d in district_dict:
     #     print("key = ",d, "values = ",district_dict[d])
     #
-    # fromVerdictsToDB()
+    fromVerdictsToDB()
     print("no year found = ",counter_noYearFound)
     print("no accused name found = ",no_accusedName)
     print("no district found = ",no_districtCounter)
@@ -867,7 +959,7 @@ if __name__ == "__main__":
     print(len(df))
 
     # plot_amount_of_param_in_param(df, IS_MINOR, DISTRICT,bar_plot= True, should_revers_x_labels= True ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
-    plot_amount_of_param_in_param(df, DISTRICT, YEAR, should_revers_x_labels = True)# ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
+    plot_amount_of_param_in_param(df, DISTRICT, YEAR, should_revers = True)# ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
     # plot_amount_of_param_in_param(df, IS_ANONYMOUS, YEAR,designated_labels = ["ינולפ","םש שי"])
     # plot_amount_per_param(df, JUDGE_NUM,bar_plot=True)#,str_labels= True, should_revers=True)
 
