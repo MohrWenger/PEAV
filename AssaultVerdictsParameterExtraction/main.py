@@ -39,6 +39,10 @@ IS_ANONYMOUS = "is anonymous"
 CLOSED_DOOR = "is closed door"
 IS_MINOR = "IS MINOR"
 
+ACTUAL_JAIL = 0
+PROBATION = 1
+COM_SERVICE = 2
+
 YEAR_REG = r"([0-3]{0,1}[0-9]\/[0-2]{0,1}[0-9]\/[0-2]{0,1}[0-9]{1,3})|([0-3]{0,1}[0-9]\.[0-2]{0,1}[0-9]\.[0-2]{0,1}[0-9]{1,3})"
 
 C345 = '345'
@@ -303,14 +307,16 @@ def extractParameters(text, db, case_name):
     if accused_name == -1:
         global no_accusedName
         no_accusedName += 1
+    else:
+        accused_name == accused_name.split("\n")[0]
 
-    elif accused_name == "פלוני":
+    if accused_name == "פלוני":
         isAnonymous = True
-    print("isAnonym type = ",type(isAnonymous))
+    # print("isAnonym type = ",type(isAnonymous))
 
     if (accused_name != "מדינת"):
         minor = is_minor(text)
-        print("minor type = ",type(minor))
+        # print("minor type = ",type(minor))
         # charges = -1
         charges =  extractLaw(case_name,text)
         db = db.append({'charges':charges},ignore_index=True)
@@ -335,14 +341,17 @@ def extractParameters(text, db, case_name):
             no_courtCounter +=1
         else:
             district = extract_dist_from_court(court)
-            print("found dist - ", district)
+            # print("found dist - ", district)
             if district == -1:
                 global no_districtCounter
                 no_districtCounter += 1
-                district = court.split(" ")[1:][0]
-                print("not found dist - ",district)
+                # print("not found dist - ",district)
+                # print("len - ",len(court.split(" ")))
+                if len(court.split(" "))> 1:
+                    district = court.split(" ")[1:][0]
+                else:
+                    district = court.split(" ")[0]
             level = court.split(" ")[0]
-
             county = extract_county(district, court)
 
         age = ageOfVictim(text)
@@ -388,6 +397,7 @@ def extractParameters(text, db, case_name):
         if ( assultedGender != -1):
             db = db.append({"Assulted Gender":assultedGender},ignore_index=True)
 
+
         interestingWords(text)
         # ['case_num', 'year', 'court', 'charges', 'accused_name', 'lines_num'])
         # if np.sum(charges) != 0:
@@ -409,9 +419,57 @@ def createNewDB():
     return df
 
 
+def urlToText(url):
+    # print("url = ",url)
+    # webUrl = urllib2.urlopen("file://"+url)
+    webUrl = urllib.request.urlopen("file://"+url)
+    html = webUrl.read()
+    # import urllib
+    # webUrl = urllib.urlopen("https://www.nevo.co.il/psika_html/mechozi/ME-19-07-69765-55.htm").read()
+    # html = html_1.decode('utf-8')
+    soup = BeautifulSoup(html, features="html.parser", from_encoding= 'utf-8-sig')
+
+    # kill all script and style elements
+    for script in soup(["script", "style"]):
+        script.extract()    # rip it out
+
+    # get text
+    text = soup.get_text()
+
+    # break into lines and remove leading and trailing space on each
+    lines = (line.strip() for line in text.splitlines())
+    # break multi-headlines into a line each
+    chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+    # drop blank lines
+    text = '\n'.join(chunk for chunk in chunks if chunk)
+    # print(soup.original_encoding)
+    # print(text)
+    return text
+
+def is_psak_din(filename, text):
+    print("filename = ", filename)
+    psak = False
+    reg_word = "פסק ה*דין|הכרעו*ת (- )*דין"
+    gzar_reg = "גזר ה*דין"
+    file_name = re.compile(filename)
+    if (re.search(reg_word,text)):
+        # print("re search vals = ", re.search(gzar_reg, text))
+        psak = True
+    elif (re.search(gzar_reg,text)):
+        # print("re search vals = ",re.search(gzar_reg,text))
+        psak = False
+    elif filter(file_name.match, verdicts_list):
+        # print("re search vals not found",re.search(reg_word,text))
+        psak = True
+    elif filter(file_name.match, gzar_list):
+        psak = False
+    else:
+        print("I didnt really know")
+    return psak
+        #         return False
+
+
 def htmlToText():
-    all = 0
-    not_good = 0
     for filename in os.listdir("/Users/tomkalir/Downloads/igud1202/html/"):
         html = open("/Users/tomkalir/Downloads/igud1202/html/" + filename, "rb").read()
         soup = BeautifulSoup(html, features="html.parser", from_encoding='utf-8-sig')
@@ -435,45 +493,140 @@ def htmlToText():
          "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24",
          "אחד", "שתים", "שתיים", "שלוש", "ארבע", "חמש", "שש", "שבע", "שמונה", "תשע",
          "עשר", "אחת", "שנים", "שניים", "", "חמישה", "", "שישה"]
-        sentences = []
-        if text.find("גזר דין") != -1:
-            all += 1
-            print("######################" + filename + "#######################")
-            indices = [m.start() for m in re.finditer("מאסר", text)]
-            for x in re.finditer("שירות", text):
-                indices.append(x.start())
-            for i in indices:
-                start = text.rfind(".", 0, i)
-                end = text.find(".", i, len(text))
-                sentence = text[start:end]
-                # print(sentence)
-                if sentence.find(":") != -1 and sentence.find("\"") != -1:  # maybe this is a quote?
-                    continue
-                if sentence.find("עונשין") != -1 and sentence.find("יעבור") == -1:
-                    continue
-                for duration in ["חודש", "שנה", "שנים", "שנות", "שעות"]:
-                    if sentence.find(duration) != -1:
-                        sentences.append(sentence)
-            found = False
-            for sentence in sentences:
-                if sentence.find("בפועל") != -1:
-                    found = True
-                    print(sentence)
-                    break
-                if sentence.find("תנאי") != -1:
-                    found = True
-                    print(sentence)
-                    break
-                if sentence.find("שירות") != -1:
-                    found = True
-                    print(sentence)
-                    break
-            if not found:
-                not_good+=1
-                print("HERE")
-                print(sentences)
-        print(all)
-        print(not_good)
+
+        extracting_penalty(text, filename)
+
+def calc_score(sentence):
+    score_relevancy = 0
+    score_relevancy = 0
+    score_relevancy = 0
+    list_of_bad_words = ['עתרה*','ה*תובעת*','ביקשה*','ה*תביעה','מבחן','צבאי','בי*טחון','קבע','דורשת*','בימים','בין','מתחם','יפחת','יעלה']
+    list_of_moderate_bad_words = [":","\"","/","\\"]
+    list_of_good_words = ['גוזרת*(ים)*(ות)*','[נמ]טילה*(ים)*(ות)*',' ד[(נה)(ן)(נים)(נות)]','משיתה*','מחליטה*(ים)*(ות)*']
+    list_of_moderate_good_words = ['לגזור','להטיל','יי*מצא מתאים']
+    # if sentence.find() != -1 and sentence.find("\"") != -1 and (sentence.find("/") != -1 or sentence.find("\\")):  # maybe this is a quote?
+    #     score_relevancy -=4
+    #     print("shall not pass1 = ",sentence)
+
+    if sentence.find("עונשין") != -1 and sentence.find("יעבור") != -1:
+        score_relevancy += 0.5
+        print("shall not pass2 = ", sentence)
+
+    for word in list_of_bad_words:
+
+        if re.search(word,sentence):
+            score_relevancy -=4
+            print("shall not pass3 = ", sentence)
+            print("bacuse of ",word)
+
+    for wr in list_of_moderate_bad_words:
+        print("wr = ", wr)
+        # if re.search(wr, sentence):
+        if sentence.find(wr) != -1:
+            score_relevancy -= 2
+            print("shall yes pass1 = ", sentence)
+            print("thanks to ", wr)
+
+    for w in list_of_good_words:
+        if re.search(w,sentence):
+            score_relevancy +=4
+            print("shall yes pass1 = ", sentence)
+            print("thanks to ",w)
+
+    for wr in list_of_moderate_good_words:
+        if re.search(wr, sentence):
+            score_relevancy += 2
+            print("shall yes pass1 = ", sentence)
+            print("thanks to ", wr)
+
+    score_relevancy += calc_punishment(sentence)
+
+    #Check general relevancy
+    #Check actual relevancy
+    #Check probation relevancy
+
+
+    return score_relevancy#, score_act, score_prob
+
+
+
+def calc_punishment(sentence): #TODO - call this somewhere
+    score_for_penalty = [0,0,0]
+    if sentence.find("בפועל") != -1:
+        score_for_penalty[ACTUAL_JAIL] += 1
+        return 3
+        # penalty = "מאסר בפועל"
+        # found = True
+        # main_sentence = sentence
+        # print(sentence)
+
+    elif sentence.find("תנאי") != -1:
+        score_for_penalty[PROBATION] += 1
+        return 0
+        # penalty = "מאסר על תנאי"
+        # found = True
+        # print(sentence)
+        # main_sentence = sentence
+
+    elif sentence.find("שירות") != -1:
+        return 3
+        # if sentence.find("מבחן") == -1:
+        #     score_for_penalty[COM_SERVICE] -= 1
+        #
+        # if sentence.find("עבודות") != -1:
+        #     score_for_penalty[COM_SERVICE] += 1
+    return 0
+        # penalty = "עבודות שירות"
+        # main_sentence = sentence
+        # found = True
+        # print(sentence)
+
+def extracting_penalty(text, filename, all, not_good):
+    sentences = []
+    len_sent = []
+    penalty = "not found"
+    main_sentence = "not found"
+    # if text.find("גזר דין") != -1:
+    all += 1
+    print("######################" + filename + "#######################")
+    indices = [m.start() for m in re.finditer("מאסר", text)]
+    for x in re.finditer("שירות", text):
+        indices.append(x.start())
+    for i in indices: #goes over all the indices of "maasar" in the text from last to first
+        start = text.rfind(".", 0, i)
+        end = text.find(".", i, len(text))
+        sentence = text[start+1:end+1]
+        # print(sentence)
+
+
+        for duration in ["חודש", "שנה", "שנים", "שנות", "שעות","שנת","חדש"]:
+            if sentence.find(duration) != -1:
+                sentences.append(sentence)
+                len_sent.append(end - start)
+    if len(sentences) > 0:
+        # min_len = min(len_sent)
+        len_sent = len_sent[::-1]
+        print("Sentences = ", sentences)
+        max_score = -10
+        for i, sentence in enumerate(sentences[::-1]):
+            scr = calc_score(sentence)/len_sent[i]
+            # if len(sentence) == min_len:
+            #     scr += 1
+            if scr > max_score:
+                max_score = scr
+                main_sentence = sentence
+
+            print("score is ",scr)
+        print("max scr = ", max_score, "for sentence ",main_sentence)
+
+        #     if not found:
+        #         not_good += 1
+        #     print("HERE")
+        #     print(sentences)
+        # print(all)
+        # print(not_good)
+
+    return all, not_good, penalty, main_sentence, sentences
 
         # if text.find("גזר דין") != -1:
         #     print("######################" + filename + "#######################")
@@ -501,7 +654,7 @@ def htmlToText():
         #             print("HERE")
         #             print(text[start:end])
         #             break
-htmlToText()
+# htmlToText()
 
 
 
@@ -520,7 +673,7 @@ def convert_str_to_int_dict(str_arr):
 
 def is_eirur(text):
     name = text.splitlines()[0]
-    print("name = ",name)
+    # print("first line = ",name)
     if name.find("ע\"פ") != -1:
         return True
     else:
@@ -532,6 +685,7 @@ def is_minor(text):
 
     # reg_word = "פסק ה*דין|הכרעו*ת (- )*דין"
     relevent_text = get_lines_after(text, reg_word, 50, 2)
+
     #is female minor:
     minors_expressions = ["קטינות","קטינה","קטינים","קטין","דלתיים סגורות"]
     results = np.zeros(5)
@@ -620,6 +774,28 @@ def get_urls_from_text_source(text_source):
     print(urls)
     return urls
 
+def htmlToText(dir, filename):
+
+        html = open(dir + filename, "rb").read()
+        soup = BeautifulSoup(html, features="html.parser", from_encoding= 'utf-8-sig')
+
+        # kill all script and style elements
+        for script in soup(["script", "style"]):
+            script.extract()    # rip it out
+
+        # get text
+        text = soup.get_text()
+
+        # break into lines and remove leading and trailing space on each
+        lines = (line.strip() for line in text.splitlines())
+        # break multi-headlines into a line each
+        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        # drop blank lines
+        text = '\n'.join(chunk for chunk in chunks if chunk)
+        # print(soup.original_encoding)
+        # print(text)
+        return text
+
 def get_all_URLS(source):
     content = urllib.request.urlopen(source)
     html = content.read()
@@ -652,19 +828,32 @@ def fromVerdictsToDB():
     # years = [1998, 2006, 2009, 2006, 2006, 2004, 1999, 2000, 2005, 2000, 2015, 1994, 2001, 2016, 2005, 2001, 2001, 2001, 2003]
     counter = -1
     # print("years len = ", len(years))
+    all = 0
+    not_good = 0
     for i, filename in enumerate(os.listdir(directory)):
         if filename.endswith(".txt"):
             counter +=1
             file_name = os.path.join(directory, filename)
             text = open(file_name, "r", encoding="utf-8").read()
+            if (is_psak_din(filename,text)):
+                pass
+                # print("^^^ File is ", file_name, " ^^^")
+                # # print("filename = ",filename,"counter = ",counter,"year = ",years[counter])
+                # verd_line = extractParameters(text, db, filename)
+                # if verd_line is not None:
+                #     db = pd.concat([db,verd_line ])
+            else:
+                print("^^^ File is ", file_name, " ^^^ - not psak")
+                if filename.find("00001630.txt") != -1:
+                    print("break point")
+                all, not_good, main_penalty, sentence, all_sentences = extracting_penalty(text, filename, all, not_good)
+                sentence_line = pd.DataFrame([[file_name[9:],"Gzar",main_penalty, sentence, all_sentences]],
+                                             columns =[CASE_NUM,"TYPE","Main Punishment","PENALTY_SENTENCE", "ALL SENTENCES"])
+                db = pd.concat([db,sentence_line ])
 
-            print("^^^ File is ", file_name, " ^^^")
-            # print("filename = ",filename,"counter = ",counter,"year = ",years[counter])
-            verd_line = extractParameters(text, db, filename)
-            if verd_line is not None:
-                db = pd.concat([db,verd_line ])
 
-            # all_accused.append( accusedName(text))
+
+                # all_accused.append( accusedName(text))
             # #charges.append(extractLaw(text))
             # compens.append(compensation(text))
             # districts.append( courtArea(text))
@@ -672,7 +861,8 @@ def fromVerdictsToDB():
             # case_names.append(filename)
         else:
             continue
-    db.to_csv('out4.csv', encoding= 'utf-8')
+    db.to_csv('verdict_penalty.csv', encoding= 'utf-8')
+    db.to_csv('verdict_penalty.csv', encoding= 'utf-8')
     # db = db.append(pd.concat([pd.DataFrame([all_accused[i], [case_names[i]]],
     #                                        columns=['accused']) for i in range(len(years))],ignore_index=True))
     # db = db.append(pd.concat([pd.DataFrame([case_names[i]],
@@ -884,6 +1074,8 @@ def plot_amount_of_param_in_param(db, different_plots_data, y_data = None, shoul
 #-------------------- main ---------------------#
 district_dict = {}
 county_dict = {}
+gzar_list = []
+verdicts_list = []
 if __name__ == "__main__":
 
     # district_dict = {}
@@ -893,10 +1085,17 @@ if __name__ == "__main__":
     with open('county_list.txt') as json_file:
         county_dict = json.load(json_file)
     #
+    with open('sentence_list.txt') as json_file:
+        gzar_list = json.load(json_file)
+    #
+
+    with open('verdict_list.txt') as json_file:
+        verdicts_list = json.load(json_file)
+
     # for d in district_dict:
     #     print("key = ",d, "values = ",district_dict[d])
     #
-    # fromVerdictsToDB()
+    fromVerdictsToDB()
     print("no year found = ",counter_noYearFound)
     print("no accused name found = ",no_accusedName)
     print("no district found = ",no_districtCounter)
