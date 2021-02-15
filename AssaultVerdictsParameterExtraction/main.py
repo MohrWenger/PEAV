@@ -39,11 +39,16 @@ IS_ANONYMOUS = "is anonymous"
 CLOSED_DOOR = "is closed door"
 IS_MINOR = "IS MINOR"
 
+BAFOAL = 'בפועל'
 ACTUAL_JAIL = 0
 PROBATION = 1
 COM_SERVICE = 2
 
 YEAR_REG = r"([0-3]{0,1}[0-9]\/[0-2]{0,1}[0-9]\/[0-2]{0,1}[0-9]{1,3})|([0-3]{0,1}[0-9]\.[0-2]{0,1}[0-9]\.[0-2]{0,1}[0-9]{1,3})"
+HEB_YEAR_EXP = "שנ(ים)*(ות)*|שנה|שנתיים"
+HEB_MONTH_EXP = "ח(ו)*דש"
+YEARS = "שנים"
+MONTHS = "חודשים"
 
 C345 = '345'
 C346 = '346'
@@ -52,6 +57,13 @@ C348 = '348'
 C349 = '349'
 C350 = '350'
 C351 = '351'
+
+TIME_UNITS_ARR =  ["חודש", "שנה", "שנים", "שנות", "שעות","שנת","חדש"]
+NUM_UNITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
+         "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24",
+         "אחד", "שתים", "שתיים", "שלוש", "ארבע", "חמש", "שש", "שבע", "שמונה", "תשע",
+         "עשר", "אחת", "שנים", "שניים", "", "חמישה", "", "שישה"]
+
 
 # TA = ת"\א
 # DIST_DICT = {"תל אביב":[],
@@ -222,6 +234,17 @@ def extract_county(dist, court):
         if re.search(county_dict[c], dist) or re.search(county_dict[c], court):
             return c
     return -1
+
+def replace_value_with_key(sentence):
+    with open('nums_reg.txt') as json_file:
+        num_dict = json.load(json_file)
+
+    for n in num_dict:
+        sentence = re.sub(num_dict[n], n, sentence)
+
+    return sentence
+
+
 
 def howManyLines(text):
     return len(text.split("."))
@@ -489,19 +512,17 @@ def htmlToText():
         text = '\n'.join(chunk for chunk in chunks if chunk)
         # print(soup.original_encoding)
         # print(text)
-        nums = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
-         "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24",
-         "אחד", "שתים", "שתיים", "שלוש", "ארבע", "חמש", "שש", "שבע", "שמונה", "תשע",
-         "עשר", "אחת", "שנים", "שניים", "", "חמישה", "", "שישה"]
+
 
         extracting_penalty(text, filename)
 
 def calc_score(sentence):
-    score_relevancy = 0
-    score_relevancy = 0
-    score_relevancy = 0
-    list_of_bad_words = ['עתרה*','ה*תובעת*','ביקשה*','ה*תביעה','מבחן','צבאי','בי*טחון','קבע','דורשת*','בימים','בין','מתחם','יפחת','יעלה']
-    list_of_moderate_bad_words = [":","\"","/","\\"]
+    score_relevancy = 8
+    score_act = 0
+    score_prob = 0
+
+    list_of_bad_words = ['עו*תרה*(ים)*(ות)*','ה*תובעת*','ביקשה*','ה*תביעה','מבחן','צבאי','בי*טחון','קבע','דורשת*','בימים','בין','מתחם','יפחת','יעלה','נגזר','נדון','ה*צדדים']
+    list_of_moderate_bad_words = ["\"","/","\\"] #":",
     list_of_good_words = ['גוזרת*(ים)*(ות)*','[נמ]טילה*(ים)*(ות)*',' ד[(נה)(ן)(נים)(נות)]','משיתה*','מחליטה*(ים)*(ות)*']
     list_of_moderate_good_words = ['לגזור','להטיל','יי*מצא מתאים']
     # if sentence.find() != -1 and sentence.find("\"") != -1 and (sentence.find("/") != -1 or sentence.find("\\")):  # maybe this is a quote?
@@ -509,13 +530,14 @@ def calc_score(sentence):
     #     print("shall not pass1 = ",sentence)
 
     if sentence.find("עונשין") != -1 and sentence.find("יעבור") != -1:
-        score_relevancy += 0.5
+        score_act += 4
         print("shall not pass2 = ", sentence)
 
     for word in list_of_bad_words:
 
         if re.search(word,sentence):
-            score_relevancy -=4
+            score_act -= 4
+            score_prob -= 4
             print("shall not pass3 = ", sentence)
             print("bacuse of ",word)
 
@@ -523,69 +545,111 @@ def calc_score(sentence):
         print("wr = ", wr)
         # if re.search(wr, sentence):
         if sentence.find(wr) != -1:
-            score_relevancy -= 2
+            score_act -= 2
+            if wr != "\"":
+                score_prob += 2
             print("shall yes pass1 = ", sentence)
             print("thanks to ", wr)
 
     for w in list_of_good_words:
         if re.search(w,sentence):
-            score_relevancy +=4
+            score_act +=4
+            score_prob +=4
             print("shall yes pass1 = ", sentence)
             print("thanks to ",w)
 
     for wr in list_of_moderate_good_words:
         if re.search(wr, sentence):
-            score_relevancy += 2
+            score_act += 2
+            score_prob += 2
             print("shall yes pass1 = ", sentence)
             print("thanks to ", wr)
 
-    score_relevancy += calc_punishment(sentence)
+    punishment = calc_punishment(sentence)
+    score_act += punishment[0] + punishment[2]
+    score_prob += punishment[1]
 
-    #Check general relevancy
-    #Check actual relevancy
-    #Check probation relevancy
-
-
-    return score_relevancy#, score_act, score_prob
+    return score_act, score_prob
 
 
 
 def calc_punishment(sentence): #TODO - call this somewhere
     score_for_penalty = [0,0,0]
     if sentence.find("בפועל") != -1:
-        score_for_penalty[ACTUAL_JAIL] += 1
-        return 3
-        # penalty = "מאסר בפועל"
-        # found = True
-        # main_sentence = sentence
+        score_for_penalty[ACTUAL_JAIL] += 3
+        # return 3
+        penalty = "מאסר בפועל"
+        found = True
+        main_sentence = sentence
         # print(sentence)
 
     elif sentence.find("תנאי") != -1:
-        score_for_penalty[PROBATION] += 1
-        return 0
-        # penalty = "מאסר על תנאי"
-        # found = True
-        # print(sentence)
-        # main_sentence = sentence
+        score_for_penalty[PROBATION] += 3
+        # return 0
+        penalty = "מאסר על תנאי"
+        found = True
+        print(sentence)
+        main_sentence = sentence
 
-    elif sentence.find("שירות") != -1:
-        return 3
+    if sentence.find("שירות") != -1:
+        # return 3
         # if sentence.find("מבחן") == -1:
         #     score_for_penalty[COM_SERVICE] -= 1
-        #
-        # if sentence.find("עבודות") != -1:
-        #     score_for_penalty[COM_SERVICE] += 1
-    return 0
+
+        if sentence.find("עבודות") != -1:
+            score_for_penalty[COM_SERVICE] += 3
+
+    return score_for_penalty
         # penalty = "עבודות שירות"
         # main_sentence = sentence
         # found = True
         # print(sentence)
 
+def vote_for_time(t, act_sent):
+    time_ind = act_sent.find(t)
+    score = np.abs(act_sent.find(BAFOAL) - time_ind ) #Distance from bafoal
+    ext = act_sent.find("יתר")
+    page = act_sent.find("עמוד")
+    if ext != -1:
+        if time_ind < ext:
+            score -= 10
+    if np.abs (time_ind - page) < 10:
+        score += 100
+
+def find_time_act(act_sent):
+    times = re.findall("[0-9]+", act_sent)
+    times_and_dist = {}
+    min_dist = 10000
+    winner_time = '0'
+    if len(times) > 2 and int(times[0]) == (int(times[1]) + int(times[2])):
+        winner_time = times[1]
+    else:
+        # word_nums = re.search(num_reg["all_nums"], act_sent)
+        # if word_nums:
+        #     times.extend(word_nums)
+        for t in times:
+            if type(t) != tuple:
+                vote_for_time(t, act_sent)
+                dist = np.abs(act_sent.find(BAFOAL) - act_sent.find(t))
+                times_and_dist[t] = dist
+                if dist < min_dist:
+                    min_dist = dist
+                    winner_time = t
+            # reg = '\b(?:'+t+'\W+(?:\w+\W+){0,'+str(dist)+'}?'+BAFOAL+'|'+BAFOAL+'\W+(?:\w+\W+){0,'+str(dist)+'}?'+t+')\b'
+    return times_and_dist, winner_time
+
+def find_time_units(act_sent):
+    if re.search(HEB_MONTH_EXP, act_sent):
+        return MONTH
+    elif re.search(HEB_YEAR_EXP, act_sent):
+        return YEAR
+
 def extracting_penalty(text, filename, all, not_good):
     sentences = []
     len_sent = []
     penalty = "not found"
-    main_sentence = "not found"
+    main_sentence_act = "not found"
+    main_sentence_prob = "not found"
     # if text.find("גזר דין") != -1:
     all += 1
     print("######################" + filename + "#######################")
@@ -597,27 +661,36 @@ def extracting_penalty(text, filename, all, not_good):
         end = text.find(".", i, len(text))
         sentence = text[start+1:end+1]
         # print(sentence)
-
-
-        for duration in ["חודש", "שנה", "שנים", "שנות", "שעות","שנת","חדש"]:
+        for duration in TIME_UNITS_ARR:
             if sentence.find(duration) != -1:
                 sentences.append(sentence)
                 len_sent.append(end - start)
+    all_times = 0
+    prison_time = 0
+    time_unit = "not found"
     if len(sentences) > 0:
         # min_len = min(len_sent)
         len_sent = len_sent[::-1]
         print("Sentences = ", sentences)
-        max_score = -10
+        max_score_act = -10
+        max_score_prob = -10
         for i, sentence in enumerate(sentences[::-1]):
-            scr = calc_score(sentence)/len_sent[i]
+            scr_act, scr_prob = calc_score(sentence)
+            scr_act = scr_act/len_sent[i]
             # if len(sentence) == min_len:
             #     scr += 1
-            if scr > max_score:
-                max_score = scr
-                main_sentence = sentence
+            if scr_act > max_score_act:
+                max_score_act = scr_act
+                main_sentence_act = sentence
+            if scr_prob > max_score_prob:
+                max_score_prob = scr_prob
+                main_sentence_prob = sentence
 
-            print("score is ",scr)
-        print("max scr = ", max_score, "for sentence ",main_sentence)
+        main_sentence_act = replace_value_with_key(main_sentence_act)
+        all_times, prison_time = find_time_act (main_sentence_act)
+        time_unit = find_time_units(main_sentence_act)
+            # print("score is ",scr)
+        # print("max scr = ", max_score, "for sentence ",main_sentence)
 
         #     if not found:
         #         not_good += 1
@@ -626,7 +699,7 @@ def extracting_penalty(text, filename, all, not_good):
         # print(all)
         # print(not_good)
 
-    return all, not_good, penalty, main_sentence, sentences
+    return all, not_good, penalty, main_sentence_act, main_sentence_prob, all_times, prison_time,time_unit
 
         # if text.find("גזר דין") != -1:
         #     print("######################" + filename + "#######################")
@@ -844,11 +917,11 @@ def fromVerdictsToDB():
                 #     db = pd.concat([db,verd_line ])
             else:
                 print("^^^ File is ", file_name, " ^^^ - not psak")
-                if filename.find("00001630.txt") != -1:
+                if filename.find("00002918-261.txt") != -1:
                     print("break point")
-                all, not_good, main_penalty, sentence, all_sentences = extracting_penalty(text, filename, all, not_good)
-                sentence_line = pd.DataFrame([[file_name[9:],"Gzar",main_penalty, sentence, all_sentences]],
-                                             columns =[CASE_NUM,"TYPE","Main Punishment","PENALTY_SENTENCE", "ALL SENTENCES"])
+                all, not_good, main_penalty, sentence, all_sentences, all_times, time, time_unit = extracting_penalty(text, filename, all, not_good)
+                sentence_line = pd.DataFrame([[file_name[9:],"Gzar", main_penalty,     sentence,          all_sentences,   all_times,       time, time_unit]],
+                                     columns =[CASE_NUM,     "TYPE","Main Punishment","PENALTY_SENTENCE", "ALL SENTENCES", "OPTIONAL TIMES", "VOTED TIME", "units"])
                 db = pd.concat([db,sentence_line ])
 
 
