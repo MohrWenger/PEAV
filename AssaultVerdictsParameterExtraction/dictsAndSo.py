@@ -119,3 +119,29 @@ county_list[HAIFA] = HAIFA+"|"+HADERA+"|"+ACO+"|"+KRAYOT
 
 with open('county_list.txt', 'w') as outfile:
     json.dump(county_list, outfile)
+
+num_unit = {}
+ONE = "אח[(ת)(ד)] |שנה "
+TWO = "שנתיים |חודשיים "
+THREE = "שלוש |שלושה "
+FOUR = "ארבע |ארבעה "
+FIVE = "חמש |חמ(י)*שה "
+SIX = "שש |ש(י)*שה "
+SEVEN = "ש(י)*בע(ה)* "
+EIGHT = "שמונה "
+NINE = "תשע(ה)* "
+TEN = "עשר(ה)* "
+
+# num_unit["all_nums"] = ONE+"|"+TWO+"|"+THREE+"|"+FOUR+"|"+FIVE+"|"+SIX+"|"+SEVEN+"|"+EIGHT+"|"+NINE+"|"+TEN
+num_unit['1 שנים'] = ONE
+num_unit['2 שנים'] = TWO
+num_unit['3'] = THREE
+num_unit['4'] = FOUR
+num_unit['5'] = FIVE
+num_unit['6'] = SIX
+num_unit['7'] = SEVEN
+num_unit['8'] = EIGHT
+num_unit['9'] = NINE
+num_unit['10'] = TEN
+with open('nums_reg.txt', 'w') as outfile:
+    json.dump(num_unit, outfile)
