@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
-import urllib.request
-# import urllib2
+import urllib#.request
+import urllib3
 # import hebpipe
 import os
 import re
@@ -443,9 +443,9 @@ def createNewDB():
 
 
 def urlToText(url):
-    # print("url = ",url)
-    # webUrl = urllib2.urlopen("file://"+url)
-    webUrl = urllib.request.urlopen("file://"+url)
+    print("url = ",url)
+    # webUrl = urllib.urlopen("file://"+url)
+    webUrl = urllib.request.urlopen(url)
     html = webUrl.read()
     # import urllib
     # webUrl = urllib.urlopen("https://www.nevo.co.il/psika_html/mechozi/ME-19-07-69765-55.htm").read()
@@ -531,39 +531,39 @@ def calc_score(sentence):
 
     if sentence.find("עונשין") != -1 and sentence.find("יעבור") != -1:
         score_act += 4
-        print("shall not pass2 = ", sentence)
+        # print("shall not pass2 = ", sentence)
 
     for word in list_of_bad_words:
 
         if re.search(word,sentence):
             score_act -= 4
             score_prob -= 4
-            print("shall not pass3 = ", sentence)
-            print("bacuse of ",word)
+            # print("shall not pass3 = ", sentence)
+            # print("bacuse of ",word)
 
     for wr in list_of_moderate_bad_words:
-        print("wr = ", wr)
+        # print("wr = ", wr)
         # if re.search(wr, sentence):
         if sentence.find(wr) != -1:
             score_act -= 2
             if wr != "\"":
                 score_prob += 2
-            print("shall yes pass1 = ", sentence)
-            print("thanks to ", wr)
+            # print("shall yes pass1 = ", sentence)
+            # print("thanks to ", wr)
 
     for w in list_of_good_words:
         if re.search(w,sentence):
             score_act +=4
             score_prob +=4
-            print("shall yes pass1 = ", sentence)
-            print("thanks to ",w)
+            # print("shall yes pass1 = ", sentence)
+            # print("thanks to ",w)
 
     for wr in list_of_moderate_good_words:
         if re.search(wr, sentence):
             score_act += 2
             score_prob += 2
-            print("shall yes pass1 = ", sentence)
-            print("thanks to ", wr)
+            # print("shall yes pass1 = ", sentence)
+            # print("thanks to ", wr)
 
     punishment = calc_punishment(sentence)
     score_act += punishment[0] + punishment[2]
@@ -623,18 +623,19 @@ def find_time_act(act_sent):
     winner_time = '0'
     if len(times) > 2 and int(times[0]) == (int(times[1]) + int(times[2])):
         winner_time = times[1]
+
     else:
-        # word_nums = re.search(num_reg["all_nums"], act_sent)
-        # if word_nums:
-        #     times.extend(word_nums)
         for t in times:
-            if type(t) != tuple:
-                vote_for_time(t, act_sent)
-                dist = np.abs(act_sent.find(BAFOAL) - act_sent.find(t))
-                times_and_dist[t] = dist
-                if dist < min_dist:
-                    min_dist = dist
-                    winner_time = t
+            if act_sent.find("עמוד") != -1 and act_sent.find("עמוד") <= act_sent.find(t) <= (act_sent.find("עמוד") + 6):
+                continue
+
+            vote_for_time(t, act_sent)
+            dist = np.abs(act_sent.find(BAFOAL) - act_sent.find(t))
+            times_and_dist[t] = dist
+            if dist < min_dist:
+                min_dist = dist
+                winner_time = t
+
             # reg = '\b(?:'+t+'\W+(?:\w+\W+){0,'+str(dist)+'}?'+BAFOAL+'|'+BAFOAL+'\W+(?:\w+\W+){0,'+str(dist)+'}?'+t+')\b'
     return times_and_dist, winner_time
 
@@ -686,9 +687,13 @@ def extracting_penalty(text, filename, all, not_good):
                 max_score_prob = scr_prob
                 main_sentence_prob = sentence
 
-        main_sentence_act = replace_value_with_key(main_sentence_act)
+        main_sentence_act = replace_value_with_key(main_sentence_act) #
         all_times, prison_time = find_time_act (main_sentence_act)
         time_unit = find_time_units(main_sentence_act)
+
+        if time_unit == MONTH:
+            prison_time = float(prison_time)/12
+            time_unit = YEAR
             # print("score is ",scr)
         # print("max scr = ", max_score, "for sentence ",main_sentence)
 
@@ -699,7 +704,7 @@ def extracting_penalty(text, filename, all, not_good):
         # print(all)
         # print(not_good)
 
-    return all, not_good, penalty, main_sentence_act, main_sentence_prob, all_times, prison_time,time_unit
+    return all, not_good, penalty, main_sentence_act, main_sentence_prob, all_times, prison_time,time_unit #כל מה שהפונקציה מחזירה שיהיה אח כך ב DB
 
         # if text.find("גזר דין") != -1:
         #     print("######################" + filename + "#######################")
@@ -728,6 +733,7 @@ def extracting_penalty(text, filename, all, not_good):
         #             print(text[start:end])
         #             break
 # htmlToText()
+
 
 
 
@@ -803,10 +809,16 @@ def is_minor(text):
 #     else:
 #         return -1
 
-def add_to_txt_db(url, text, court_type):
-    name_file = url.strip("https://www.nevo.co.il/psika_html/"+court_type+"/")
-    with open(VERDICTS_DIR + name_file + ".txt", "w", encoding="utf-8") as newFile:
-        newFile.write(text)
+def add_to_txt_db(url, text, court_type, name_only = False): # currently edited to return name and not write
+    # name_file = url.strip("https://www.nevo.co.il/psika_html/"+court_type+"/")
+    if text == "":
+        print("breakpoint at ",url)
+    name_file = url.split("/")[-1]
+    name_file = name_file.replace(".htm",".txt")
+    if not name_only:
+        with open(VERDICTS_DIR + name_file, "w", encoding="utf-8") as newFile:
+            newFile.write(text)
+    return name_file
 
 counter_noYearFound = 0
 
@@ -888,6 +900,8 @@ This function receives a path with many verdicts (presumably in word or html for
 database
 """
 def fromVerdictsToDB():
+    with open('test_case_filenames.txt') as json_file:
+        relevant_cases = json.load(json_file)
     db = createNewDB()
     # case_names = []
     # compens = []
@@ -895,7 +909,8 @@ def fromVerdictsToDB():
     # charges = []
     # lines_number = []
     # all_accused = []
-
+    batch = pd.read_csv("Igud_Gzar2 - Sheet1.csv", error_bad_lines = False)
+    files = batch['קובץ']#Take all htm urls as a list
     directory = VERDICTS_DIR               #text files eddition:
     # years = []
     # years = [1998, 2006, 2009, 2006, 2006, 2004, 1999, 2000, 2005, 2000, 2015, 1994, 2001, 2016, 2005, 2001, 2001, 2001, 2003]
@@ -903,26 +918,32 @@ def fromVerdictsToDB():
     # print("years len = ", len(years))
     all = 0
     not_good = 0
-    for i, filename in enumerate(os.listdir(directory)):
-        if filename.endswith(".txt"):
-            counter +=1
+    for i, filename in enumerate(os.listdir(directory)): #when iterateing through all files in folder
+    # for i in range(len(files)): #when iterateing through all files in igud colum
+    #     if type(files[i]) == str:
+    #         filename = add_to_txt_db(files[i], urlToText(files[i]), "mechozi")
+        if filename.endswith(".txt") and filename in relevant_cases:
+            counter += 1
             file_name = os.path.join(directory, filename)
             text = open(file_name, "r", encoding="utf-8").read()
-            if (is_psak_din(filename,text)):
-                pass
+            # if (is_psak_din(filename,text)):
+            #     pass
                 # print("^^^ File is ", file_name, " ^^^")
                 # # print("filename = ",filename,"counter = ",counter,"year = ",years[counter])
                 # verd_line = extractParameters(text, db, filename)
                 # if verd_line is not None:
                 #     db = pd.concat([db,verd_line ])
-            else:
-                print("^^^ File is ", file_name, " ^^^ - not psak")
-                if filename.find("00002918-261.txt") != -1:
-                    print("break point")
-                all, not_good, main_penalty, sentence, all_sentences, all_times, time, time_unit = extracting_penalty(text, filename, all, not_good)
-                sentence_line = pd.DataFrame([[file_name[9:],"Gzar", main_penalty,     sentence,          all_sentences,   all_times,       time, time_unit]],
-                                     columns =[CASE_NUM,     "TYPE","Main Punishment","PENALTY_SENTENCE", "ALL SENTENCES", "OPTIONAL TIMES", "VOTED TIME", "units"])
-                db = pd.concat([db,sentence_line ])
+            # else:
+            print("^^^ File is ", file_name, " ^^^ - not psak")
+                # if filename.find("00001295-97.txt") != -1:
+                    # print("break point")
+            all, not_good, main_penalty, sentence, all_sentences, all_times, time, time_unit = extracting_penalty(text, filename, all, not_good) #Here I call the penalty func
+            batch.loc[i,"PENALTY_SENTENCE"] = main_penalty
+            batch.loc[i,"VOTED TIME"] = time
+            # batch.loc[i,"PENALTY_SENTENCE"] = main_penalty
+            sentence_line = pd.DataFrame([[file_name,"Gzar", main_penalty,     sentence,          all_sentences,   all_times,       time, time_unit]], #here I add values to DB
+                                         columns =[CASE_NUM,     "TYPE","Main Punishment","PENALTY_SENTENCE", "ALL SENTENCES", "OPTIONAL TIMES", "VOTED TIME", "units"]) #Here adding a title
+            db = pd.concat([db,sentence_line ])
 
 
 
@@ -934,7 +955,7 @@ def fromVerdictsToDB():
             # case_names.append(filename)
         else:
             continue
-    db.to_csv('verdict_penalty.csv', encoding= 'utf-8')
+    # db.to_csv('verdict_penalty.csv', encoding= 'utf-8')
     db.to_csv('verdict_penalty.csv', encoding= 'utf-8')
     # db = db.append(pd.concat([pd.DataFrame([all_accused[i], [case_names[i]]],
     #                                        columns=['accused']) for i in range(len(years))],ignore_index=True))
@@ -1176,11 +1197,21 @@ if __name__ == "__main__":
     print("no charges found", no_chargesCounter)
     print("no age found = ", no_ageCounter)
     # from_search_to_local()
-    df = pd.read_csv("out4.csv", error_bad_lines= False)
-    print(len(df))
-
+    df = pd.read_csv("verdict_penalty.csv", error_bad_lines= False)
+    df = df.loc[df['VOTED TIME'] != 0]
+    # df = df.loc[df['VOTED TIME'] > 30]
+    df = df.loc[df['VOTED TIME'] < 30]
+    print(df['case_num'])
+    print(np.median(df['VOTED TIME']))
+    print(len(df['VOTED TIME']))
+    plt.boxplot(df['VOTED TIME'])
+    plt.title("התפלגות כלל העונשים עבור סעיפים ..."[::-1])
+    plt.xlabel("סעיפי ענישה"[::-1])
+    plt.xticks([1],labels=["345 - 351"])
+    plt.ylabel("שנים"[::-1])
+    plt.show()
     # plot_amount_of_param_in_param(df, IS_MINOR, DISTRICT,bar_plot= True, should_revers_x_labels= True ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
-    plot_amount_of_param_in_param(df, ASSULTED_GENDER, YEAR, bar_plot= True)# ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
+    # plot_amount_of_param_in_param(df, ASSULTED_GENDER, YEAR, bar_plot= True) # ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
     # plot_amount_of_param_in_param(df, IS_ANONYMOUS, YEAR,designated_labels = ["ינולפ","םש שי"])
     # plot_amount_per_param(df, JUDGE_NUM,bar_plot=True)#,str_labels= True, should_revers=True)
 

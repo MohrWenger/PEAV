@@ -1,4 +1,6 @@
 import json
+import pandas as pd
+
 DISTRICTS = "districts"
 TEL_AVIV = 'תל אביב'
 TA = "א\"ת"
@@ -145,3 +147,16 @@ num_unit['9'] = NINE
 num_unit['10'] = TEN
 with open('nums_reg.txt', 'w') as outfile:
     json.dump(num_unit, outfile)
+
+def strip_case_name(url):
+    name_file = url.split("/")[-1]
+    name_file = name_file.replace(".doc", ".txt")
+    return name_file
+
+test_case_files = pd.read_csv("Test Set - PEAV - Sheet1.csv", error_bad_lines = False)
+files = test_case_files['מזהה (url)']
+
+test_set_cases = list(map(strip_case_name, files))
+print(test_set_cases)
+with open('test_case_filenames.txt', 'w') as outfile:
+    json.dump(test_set_cases, outfile)
