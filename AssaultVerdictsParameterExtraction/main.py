@@ -16,7 +16,8 @@ import json
 import glob
 import datefinder
 
-VERDICTS_DIR = "verdicts/"
+VERDICTS_DIR = r"C:\Users\oryiz\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\after_extraction_verdicts\\"
+# VERDICTS_DIR = "verdicts/"
 
 DISTRICT = "district"
 CASE_NUM = "case_num"
@@ -687,7 +688,7 @@ def extracting_penalty(text, filename, all, not_good):
                 max_score_prob = scr_prob
                 main_sentence_prob = sentence
 
-        main_sentence_act = replace_value_with_key(main_sentence_act) #
+        # main_sentence_act = replace_value_with_key(main_sentence_act) #TODO notice This is turned off for sentence validation purposes
         all_times, prison_time = find_time_act (main_sentence_act)
         time_unit = find_time_units(main_sentence_act)
 
@@ -934,7 +935,7 @@ def fromVerdictsToDB():
                 # if verd_line is not None:
                 #     db = pd.concat([db,verd_line ])
             # else:
-            print("^^^ File is ", file_name, " ^^^ - not psak")
+            print("^^^ File is ", file_name, " ^^^ - not psak"," counter = " ,counter)
                 # if filename.find("00001295-97.txt") != -1:
                     # print("break point")
             all, not_good, main_penalty, sentence, all_sentences, all_times, time, time_unit = extracting_penalty(text, filename, all, not_good) #Here I call the penalty func
@@ -1210,6 +1211,7 @@ if __name__ == "__main__":
     plt.xticks([1],labels=["345 - 351"])
     plt.ylabel("שנים"[::-1])
     plt.show()
+
     # plot_amount_of_param_in_param(df, IS_MINOR, DISTRICT,bar_plot= True, should_revers_x_labels= True ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
     # plot_amount_of_param_in_param(df, ASSULTED_GENDER, YEAR, bar_plot= True) # ,designated_labels=["ןיטק","אל ןיטק","אל עודי"])#, add_a_total=True)
     # plot_amount_of_param_in_param(df, IS_ANONYMOUS, YEAR,designated_labels = ["ינולפ","םש שי"])

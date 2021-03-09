@@ -19,6 +19,7 @@ print()
 print("children: ")
 # print(root.children)
 list_of_relevant_roots = []
+list_of_relevant_sentences = []
 adj_dict = {}
 # relevance_flag = False
 
@@ -32,11 +33,13 @@ def BFS (root,checking_func):
         #     print("------ you have ecounterdes a JJ -------")
         #     print(tok.token['form']," = ",tok.token['upos'])
         #     print("----------------------------------------")
+        if tok.token["deprel"] == "root":
+            print(tok.metadata)
         if checking_func(tok):
             print("------ relevant sentnence ------")
             relevance_flag = True
-            print("relevance flag is now true")
-            print(tok.token['form'], " = ", tok.token['upos'])
+            print("relevance flag is now true, and sentence is ")
+            print(tok.token['form'], " = ", tok.token['upos'], "deprel = ")
             print("----------------------------------------")
 
         else:
@@ -50,6 +53,7 @@ def BFS (root,checking_func):
 
 def check_if_relevant_noun(tok):
     if tok.token['upos'] == "NN" and tok.token["lemma"] == "מתלונן":
+
         return True
     else:
         return False
@@ -59,11 +63,16 @@ def count_adj_appearence(tok):
         adj_f = tok.token['form']
         if adj_f in adj_dict.keys():
             adj_dict[adj_f] += 1
+            if (tok.token["deprel"] == "amod"):
+                print (tok.token['form'], "is an amod (:")
+            else:
+                print("The deprel is: ", tok.token["deprel"])
         else:
             adj_dict[adj_f] = 1
         return True
     else:
         return False
+
 
 def parse_all_sentences():
     for tokentree in conllu.parse_tree_incr(data_file):
@@ -73,8 +82,17 @@ def parse_all_sentences():
         if relevance_flag:
             list_of_relevant_roots.append(tokentree)
 
+    with open('relevant sentences.txt', 'w',encoding="utf-8") as filehandle:
+        for listitem in list_of_relevant_roots:
+            back_to_conll = listitem.serialize()
+            # text = back_to_conll.metadata
+            filehandle.write('-----  new sentence  -----\n')
+            # filehandle.write('%s\n' % text)
+            filehandle.write('%s\n' % back_to_conll)
+            filehandle.write('-----  sentence end  -----\n')
     print("relevants = ",list_of_relevant_roots)
     print("num of relevants = ",len(list_of_relevant_roots))
+
 
 def count_relevant_adj_1(relevant_list):
     for s in relevant_list:
