@@ -76,14 +76,15 @@ def vote_for_time(t, act_sent):
 
 def find_time_act(act_sent):
     """
-
+    This function receives a sentence and extracts the actual jail time given.
     :param act_sent:
     :return:
     """
-    times = re.findall("[0-9]+", act_sent)
+    times = re.findall("[0-9]+", act_sent) #finds all the numbers, assumes word numbers were converted.
     times_and_dist = {}
     min_dist = 10000
     winner_time = '0'
+
     if len(times) > 2 and int(times[0]) == (int(times[1]) + int(times[2])):
         winner_time = times[1]
 
@@ -102,7 +103,23 @@ def find_time_act(act_sent):
             # reg = '\b(?:'+t+'\W+(?:\w+\W+){0,'+str(dist)+'}?'+BAFOAL+'|'+BAFOAL+'\W+(?:\w+\W+){0,'+str(dist)+'}?'+t+')\b'
     return times_and_dist, winner_time
 
-def calc_punishment(sentence): #TODO - call this somewhere
+def replace_value_with_key(sentence):
+    """
+
+    :param sentence:
+    :return:
+    """
+    with open('nums_reg.txt') as json_file:
+        num_dict = json.load(json_file)
+
+    #pre check if there is number bigger then 10.
+
+    for n in num_dict:
+        sentence = re.sub(num_dict[n], n, sentence)
+
+    return sentence
+
+def calc_punishment(sentence):
     score_for_penalty = [0,0,0]
 
     if sentence.find("בפועל") != -1:
@@ -198,15 +215,22 @@ def extracting_penalty(text, filename ):
                 max_score_prob = scr_prob
                 main_sentence_prob = sentence
 
-        # main_sentence_act = replace_value_with_key(main_sentence_act) #TODO notice This is turned off for sentence validation purposes
+        all_times, time, time_unit = extract_time_from_sentence(main_sentence_act)
+
+    return penalty, main_sentence_act, main_sentence_prob, all_times, prison_time,time_unit #כל מה שהפונקציה מחזירה שיהיה אח כך ב DB
+
+def extract_time_from_sentence(sentence):
+        main_sentence_act = replace_value_with_key(sentence) #TODO notice This is turned off for sentence validation purposes
         all_times, prison_time = find_time_act (main_sentence_act)
         time_unit = find_time_units(main_sentence_act)
 
         if time_unit == YEAR:
             prison_time = float(prison_time)*12
             time_unit = YEAR
+        else:
+            time_unit = MONTH
 
-    return penalty, main_sentence_act, main_sentence_prob, all_times, prison_time,time_unit #כל מה שהפונקציה מחזירה שיהיה אח כך ב DB
+        return all_times, prison_time, time_unit
 
 def find_time_units(act_sent):
     if re.search(HEB_MONTH_EXP, act_sent):
@@ -255,6 +279,9 @@ def fromVerdictsToDB():
                 continue
 
             db.to_csv('verdict_penalty.csv', encoding= 'utf-8')
+
+def from_sentence_list(sentence_list):
+    pass
 
 if __name__ == "__main__":
 
