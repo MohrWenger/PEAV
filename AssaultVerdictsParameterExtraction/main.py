@@ -17,6 +17,7 @@ import glob
 import datefinder
 
 VERDICTS_DIR = r"C:\Users\oryiz\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\after_extraction_verdicts\\"
+VERDICTS_DIR = "final_verdicts_dir/"
 # VERDICTS_DIR = "verdicts/"
 
 DISTRICT = "district"
@@ -692,8 +693,8 @@ def extracting_penalty(text, filename, all, not_good):
         all_times, prison_time = find_time_act (main_sentence_act)
         time_unit = find_time_units(main_sentence_act)
 
-        if time_unit == MONTH:
-            prison_time = float(prison_time)/12
+        if time_unit == YEAR:
+            prison_time = float(prison_time)*12
             time_unit = YEAR
             # print("score is ",scr)
         # print("max scr = ", max_score, "for sentence ",main_sentence)
@@ -936,13 +937,13 @@ def fromVerdictsToDB():
                 #     db = pd.concat([db,verd_line ])
             # else:
             print("^^^ File is ", file_name, " ^^^ - not psak"," counter = " ,counter)
-                # if filename.find("00001295-97.txt") != -1:
-                    # print("break point")
+            if filename.find("00001581-359.txt") != -1:
+                print("break point")
             all, not_good, main_penalty, sentence, all_sentences, all_times, time, time_unit = extracting_penalty(text, filename, all, not_good) #Here I call the penalty func
             batch.loc[i,"PENALTY_SENTENCE"] = main_penalty
             batch.loc[i,"VOTED TIME"] = time
             # batch.loc[i,"PENALTY_SENTENCE"] = main_penalty
-            sentence_line = pd.DataFrame([[file_name,"Gzar", main_penalty,     sentence,          all_sentences,   all_times,       time, time_unit]], #here I add values to DB
+            sentence_line = pd.DataFrame([[filename,"Gzar", main_penalty,     sentence,          all_sentences,   all_times,       time, time_unit]], #here I add values to DB
                                          columns =[CASE_NUM,     "TYPE","Main Punishment","PENALTY_SENTENCE", "ALL SENTENCES", "OPTIONAL TIMES", "VOTED TIME", "units"]) #Here adding a title
             db = pd.concat([db,sentence_line ])
 

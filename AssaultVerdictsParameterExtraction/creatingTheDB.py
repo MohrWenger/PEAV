@@ -7,12 +7,17 @@ import numpy as np
 from collections import Counter
 import pandas as pd
 from bs4 import BeautifulSoup
-import urllib.request
+# import requests_html
+
+
+
+import urllib.request as urlb
+import urllib3
 
 # VERDICTS_DIR = r"C:\Users\oryiz\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\verdicts"
 # VERDICTS_DIR = "verdicts/" #TODO this is the directory the files are going to be saved to
 VERDICTS_DIR = "after_extraction_verdicts/" #TODO this is the directory the files are going to be saved to
-NEW_VERDICTS_DIR = "final_verdicts_dir"
+NEW_VERDICTS_DIR = "final_verdicts_dir/"
 DISTRICT = "district"
 CASE_NUM = "case_num"
 ACCUSED_NAME = "accused_name"
@@ -66,11 +71,26 @@ def urlToText(url):
     :param url: The URL to read
     :return: The text of the URL as a long string
     """
+
+
     print("url = ",url)
+
     # webUrl = urllib.request.urlopen("file\\:"+url)
     # html = webUrl.read()
+    # r = urlb.urlopen(url)
+    # x = BeautifulSoup.BeautifulSoup(r.read)
+    # r.close()
+
+
     html = open(url,  errors="ignore").read()
-    soup = BeautifulSoup(html, features="html.parser", from_encoding= 'utf-8-sig')
+    webUrl = urlb.urlopen("file:///"+url)
+    html = webUrl.read()
+    # soup = BeautifulSoup(html, features="html.parser", from_encoding= 'utf-8')
+    # soup = BeautifulSoup(html, features="html.parser", from_encoding='utf-8-sig')
+    #possibly we need encoding: windows-1255
+    soup = BeautifulSoup(html, features="html.parser", from_encoding='found_encoding')
+    print(soup.original_encoding)
+    soup.prettify('utf-8')
 
     # kill all script and style elements
     for script in soup(["script", "style"]):
@@ -101,8 +121,9 @@ def add_to_txt_db(url, name_only = False):
     name_file = url.split("/")[-1]
     name_file = url.split("\\")[-1]
     name_file = name_file.replace(".htm",".txt")
+
     if not name_only:
-        with open(VERDICTS_DIR + name_file, "w", encoding="utf-8") as newFile:
+        with open(NEW_VERDICTS_DIR + name_file, "w", encoding="utf-8") as newFile:
             newFile.write(text)
     return name_file
 
@@ -156,17 +177,18 @@ verdicts_list = []
 
 if __name__ == "__main__":
 
-    # directory = r"C:\Users\oryiz\Downloads\html"
-    directory = VERDICTS_DIR
+    directory = r"C:\Users\oryiz\Downloads\html"
+    # directory = VERDICTS_DIR
     batch = pd.read_csv("Igud_Gzar2 - Sheet1.csv", error_bad_lines = False)
     for i, filename in enumerate(os.listdir(directory)):
         print(i)
-        new_name = filename.strip("verdicts")
-        print("new filename: ",  VERDICTS_DIR+new_name)
-        f = open(NEW_VERDICTS_DIR + new_name, "w")
-        origin_f = open(VERDICTS_DIR +filename,"r")
-        f.write(origin_f.read())
-        # if filename.endswith(".htm"):
-        #     add_to_txt_db(directory+"\\"+filename)
+        # new_name = filename.strip("verdicts")
+        # print("new filename: ",  VERDICTS_DIR+new_name)
+        # f = open(NEW_VERDICTS_DIR + new_name, "w")
+        # origin_f = open(VERDICTS_DIR + filename)
+        # print(origin_f.read())
+        # f.write(origin_f.read())
+        if filename.endswith(".htm"):
+            add_to_txt_db(directory+"\\"+filename)
 
     # list_of_urls_to_local(batch[HTML_FILES])
