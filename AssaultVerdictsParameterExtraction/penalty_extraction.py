@@ -1,22 +1,12 @@
-from bs4 import BeautifulSoup
-import urllib#.request
-import urllib3
-# import hebpipe
+
 import os
 import re
-import string
-import matplotlib.pyplot as plt
 import numpy as np
-from collections import Counter
 import pandas as pd
-from scipy.interpolate import interp1d
-from sklearn.metrics import r2_score
-import conllu
 import json
 
 VERDICTS_DIR = r"C:\Users\oryiz\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\after_extraction_verdicts\\"
 VERDICTS_DIR = "final_verdicts_dir/"
-# VERDICTS_DIR = "verdicts/"
 
 DISTRICT = "district"
 CASE_NUM = "case_num"

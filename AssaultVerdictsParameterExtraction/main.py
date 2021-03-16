@@ -1,7 +1,5 @@
 from bs4 import BeautifulSoup
-import urllib#.request
-import urllib3
-# import hebpipe
+import urllib
 import os
 import re
 import string
@@ -9,16 +7,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from collections import Counter
 import pandas as pd
-from scipy.interpolate import interp1d
-from sklearn.metrics import r2_score
-import conllu
 import json
-import glob
-import datefinder
 
-VERDICTS_DIR = r"C:\Users\oryiz\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\after_extraction_verdicts\\"
+VERDICTS_DIR = "/Users/tomkalir/Downloads/final_verdicts_dir/"
 VERDICTS_DIR = "final_verdicts_dir/"
-# VERDICTS_DIR = "verdicts/"
 
 DISTRICT = "district"
 CASE_NUM = "case_num"
@@ -708,42 +700,7 @@ def extracting_penalty(text, filename, all, not_good):
 
     return all, not_good, penalty, main_sentence_act, main_sentence_prob, all_times, prison_time,time_unit #כל מה שהפונקציה מחזירה שיהיה אח כך ב DB
 
-        # if text.find("גזר דין") != -1:
-        #     print("######################" + filename + "#######################")
-        #     indices = [m.start() for m in re.finditer("מאסר", text)]
-        #     for i in indices[-5:]:
-        #         start = text.rfind(".", 0, i)
-        #         end = text.find(".", i, len(text))
-        #         sentence = text[start:end]
-        #         if sentence.find("\"") != -1:
-        #             continue
-        #         if sentence.find("עונשין") != -1:
-        #             continue
-        #         found = False
-        #         if sentence.find("בפועל") != -1:
-        #             for duration in ["חודש", "שנה", "שנים", "שנות"]:
-        #                 if sentence.find(duration) != -1:
-        #                     found = True
-        #             if found:
-        #                 print(sentence)
-        #                 break
-        #         for duration in ["חודש", "שנה", "שנים"]:
-        #             if sentence.find(duration) != -1:
-        #                 found = True
-        #         if found:
-        #             print("HERE")
-        #             print(text[start:end])
-        #             break
-# htmlToText()
 
-
-
-
-
-# urlToText("https://www.nevo.co.il/psika_html/mechozi/ME-98-4124-HK.htm")
-# urlToText("https://www.nevo.co.il/psika_html/mechozi/ME-17-12-378-33.htm")
-
-#################### mohr current working on ###############################33
 def convert_str_to_int_dict(str_arr):
         unique_vals = list(Counter(str_arr).keys())
         print(unique_vals)
@@ -1274,25 +1231,3 @@ def demo_plot_4():
     plt.ylabel("number of sentences")
     plt.title("Average amount of sentences as factor\n of amount of judges")
     plt.show()
-
-
-# ["https://www.nevo.co.il/psika_html/shalom/SH-96-84-HK.htm" - 1998,
-#         "https://www.nevo.co.il/psika_html/mechozi/m06000511-a.htm" - 2006,
-#         "https://www.nevo.co.il/psika_html/mechozi/ME-09-02-10574-380.htm" - 2009,
-#         "https://www.nevo.co.il/psika_html/mechozi/m06007004-660.htm" - 2006,
-#         "https://www.nevo.co.il/psika_html/mechozi/m06020001.htm" - 2006,
-#         "https://www.nevo.co.il/psika_html/shalom/s01003122-438.htm" - 2004,
-#         "https://www.nevo.co.il/psika_html/shalom/s981928.htm" - 1999,
-#         "https://www.nevo.co.il/psika_html/mechozi/m011190a.htm" - 2000,
-#         "https://www.nevo.co.il/psika_html/mechozi/m01000232.htm" - 2005,
-#         "https://www.nevo.co.il/psika_html/mechozi/m99934.htm" - 2000,
-#         "https://www.nevo.co.il/psika_html/mechozi/ME-12-01-13327-55.htm" - 2015,
-#         "https://www.nevo.co.il/psika_html/mechozi/me-93-76-a.htm" - 1994,
-#         "https://www.nevo.co.il/psika_html/mechozi/m01171.htm" - 2001,
-#         "https://www.nevo.co.il/psika_html/mechozi/ME-16-12-8398-11.htm" - 2016,
-#         "https://www.nevo.co.il/psika_html/mechozi/m01000405-a.htm" - 2005,
-#         "https://www.nevo.co.il/psika_html/mechozi/m00001039-148.htm" - 2001,
-#         "https://www.nevo.co.il/psika_html/mechozi/m001129.htm" - 2001,
-#         "https://www.nevo.co.il/psika_html/mechozi/m00000935-103.htm" - 2001,
-#         "https://www.nevo.co.il/psika_html/mechozi/ME-98-4124-HK.htm" - 2003
-#         ]

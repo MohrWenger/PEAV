@@ -16,7 +16,7 @@ import urllib3
 
 # VERDICTS_DIR = r"C:\Users\oryiz\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\verdicts"
 # VERDICTS_DIR = "verdicts/" #TODO this is the directory the files are going to be saved to
-VERDICTS_DIR = "after_extraction_verdicts/" #TODO this is the directory the files are going to be saved to
+VERDICTS_DIR = "/Users/tomkalir/Downloads/final_verdicts_dir/" #TODO this is the directory the files are going to be saved to
 NEW_VERDICTS_DIR = "final_verdicts_dir/"
 DISTRICT = "district"
 CASE_NUM = "case_num"
