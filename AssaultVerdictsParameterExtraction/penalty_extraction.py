@@ -1,4 +1,7 @@
-
+from bs4 import BeautifulSoup
+import urllib#.request
+import urllib3
+# import hebpipe
 import os
 import re
 import numpy as np
@@ -212,7 +215,13 @@ def find_time_units(act_sent):
         return YEAR
 
 
-def fromVerdictsToDB(df):
+def fromVerdictsToDB():
+    """
+    This function creates the feature db.
+    :param df:
+    :return:
+    """
+    batch = pd.DataFrame()
     directory = VERDICTS_DIR               #text files eddition:
     counter = 0
 
@@ -235,8 +244,9 @@ def fromVerdictsToDB(df):
 
                 main_penalty, sentence, all_sentences, all_times, time, time_unit = extracting_penalty(text, filename) #Here I call the penalty func
 
-                df.loc[i,"PENALTY_SENTENCE"] = main_penalty
-                df.loc[i,"VOTED TIME"] = time
+                batch.loc[i,"PENALTY_SENTENCE"] = main_penalty
+                batch.loc[i,"VOTED TIME"] = time
+
                 sentence_line = pd.DataFrame([[filename,"Gzar", main_penalty,     sentence,          all_sentences,   all_times,       time, time_unit]], #here I add values to DB
                                              columns =[CASE_NUM,     "TYPE","Main Punishment","PENALTY_SENTENCE", "ALL SENTENCES", "OPTIONAL TIMES", "VOTED TIME", "units"]) #Here adding a title
                 db = pd.concat([db,sentence_line ])
@@ -245,3 +255,21 @@ def fromVerdictsToDB(df):
                 continue
 
             db.to_csv('verdict_penalty.csv', encoding= 'utf-8')
+
+if __name__ == "__main__":
+
+    # district_dict = {}
+    with open('data.txt') as json_file:
+        district_dict = json.load(json_file)
+    #
+    with open('county_list.txt') as json_file:
+        county_dict = json.load(json_file)
+    #
+    with open('sentence_list.txt') as json_file:
+        gzar_list = json.load(json_file)
+    #
+
+    with open('verdict_list.txt') as json_file:
+        verdicts_list = json.load(json_file)
+
+    fromVerdictsToDB()
