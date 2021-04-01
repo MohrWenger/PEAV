@@ -133,7 +133,7 @@ def vote_for_time(t, act_sent, t_units):
 
     for u in units: #start from time_ind
         if type(u[1]) == str:
-            ind = act_sent[time_ind:].find(u)
+            ind = act_sent.find(u)
             if ind != -1 and np.abs(ind - time_ind) < 5:
                 score -= 1000
                 break
@@ -170,7 +170,7 @@ def find_time_act(act_sent):
     else:
         t_units = find_time_units(act_sent)
         for t in times:
-            if (t_units == YEAR and int (t) > 30) or (t_units == MONTH and int(t) > 30 *12) :
+            if (t_units == YEAR and int (t) > 20) or ( int(t) > 20 * 12) :
                 print("entered this")
                 continue
 
@@ -320,6 +320,43 @@ def find_time_units(act_sent):
     elif re.search(HEB_YEAR_EXP, act_sent):
         return YEAR
 
+def add_to_txt_db(url, text, court_type, name_only = False): # currently edited to return name and not write
+    # name_file = url.strip("https://www.nevo.co.il/psika_html/"+court_type+"/")
+    if text == "":
+        print("breakpoint at ",url)
+    name_file = url.split("/")[-1]
+    name_file = name_file.replace(".htm",".txt")
+    if not name_only:
+        with open(VERDICTS_DIR + name_file, "w", encoding="utf-8") as newFile:
+            newFile.write(text)
+    return name_file
+
+def urlToText(url):
+    print("url = ",url)
+    # webUrl = urllib.urlopen("file://"+url)
+    webUrl = urllib.request.urlopen(url)
+    html = webUrl.read()
+    # import urllib
+    # webUrl = urllib.urlopen("https://www.nevo.co.il/psika_html/mechozi/ME-19-07-69765-55.htm").read()
+    # html = html_1.decode('utf-8')
+    soup = BeautifulSoup(html, features="html.parser", from_encoding= 'utf-8-sig')
+
+    # kill all script and style elements
+    for script in soup(["script", "style"]):
+        script.extract()    # rip it out
+
+    # get text
+    text = soup.get_text()
+
+    # break into lines and remove leading and trailing space on each
+    lines = (line.strip() for line in text.splitlines())
+    # break multi-headlines into a line each
+    chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+    # drop blank lines
+    text = '\n'.join(chunk for chunk in chunks if chunk)
+    # print(soup.original_encoding)
+    # print(text)
+    return text
 
 def fromVerdictsToDB():
     """
@@ -330,6 +367,8 @@ def fromVerdictsToDB():
     db = pd.DataFrame()
     directory = VERDICTS_DIR               #text files eddition:
     counter = 0
+    batch = pd.read_csv("Igud_Gzar2 - Sheet1.csv", error_bad_lines=False)
+    files = batch['קובץ']  # Take all htm urls as a list
 
     with open('test_case_filenames.txt') as json_file:
         relevant_cases = json.load(json_file)
@@ -339,13 +378,13 @@ def fromVerdictsToDB():
             #     if type(files[i]) == str:
             #         filename = add_to_txt_db(files[i], urlToText(files[i]), "mechozi")
 
-            if filename.endswith(".txt") and counter < 150:# and filename in relevant_cases:
+            if filename.endswith(".txt") and counter < 150 and filename in relevant_cases:
                 counter += 1
                 file_name = os.path.join(directory, filename)
                 text = open(file_name, "r", encoding="utf-8").read()
 
                 print("^^^ File is ", file_name, " ^^^ - not psak"," counter = " ,counter)
-                if filename.find("ME-09-127-11.txt") != -1:
+                if filename.find("ME-09-09-8805-668.txt") != -1:
                     print("break point")
 
                 main_penalty, sentence, all_sentences, all_times, time, time_unit = extracting_penalty(text, filename) #Here I call the penalty func
@@ -373,7 +412,7 @@ def from_sentence_list(case_names, sentence_list):
     for i in range(len(sentence_list)):
 
         print('i = ', i)
-        if i == 34:
+        if case_names[i] == "ME-09-09-8805-668.txt":
             print("b point")
         if type(sentence_list[i]) == str:
             all_times, prison_time, time_unit = extract_time_from_sentence(sentence_list[i])
@@ -410,6 +449,6 @@ if __name__ == "__main__":
     with open('verdict_list.txt') as json_file:
         verdicts_list = json.load(json_file)
 
-    fromVerdictsToDB()
+    # fromVerdictsToDB()
 
-    # pipline_on_test_set()
+    pipline_on_test_set()
