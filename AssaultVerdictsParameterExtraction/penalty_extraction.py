@@ -58,10 +58,12 @@ NUM_UNITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
          "עשר", "אחת", "שנים", "שניים", "", "חמישה", "", "שישה"]
 
 regex_numbers_heb = ["(אח[ד|ת] |חודש )", "(שנתיי?ם|חודשיים|שתיי?ם|שניים)", "(שלושה?)", "(ארבעה?)", "(חמי?שה?)",
-                     "(\sשישה|שש)", "(שי?בעה?)", "(שמונה?)", "(תשעה?)", "(עשרה?)"]
+                     "(שישה|שש)", "(שי?בעה?)", "(שמונה?)", "(תשעה?)", "(עשרה?)"]
 ten = "(\s?-?\s?עשרה?)?"
-and_str = "(ו?)"
+and_str = "(ו)?"
 tens = "(ים)?"
+unit_check = "(\s)"
+half = "\s?וחצי\s?"
 
 
 def numberExchange(sentence):
@@ -71,9 +73,11 @@ def numberExchange(sentence):
     :return: A sentence after the replacement was done
     """
     i = 1
+    might_be_unit = ""
+    might_be_half = ""
     new_sentence = sentence
     for word in regex_numbers_heb:  # Go over the regexes and find number expressions
-        pattern = and_str + word + tens + ten  # Creating a regex with groups according to hebrew language rules
+        pattern = and_str + word + tens + ten + unit_check  # Creating a regex with groups according to hebrew language rules
         heb_numbers = [m.span() for m in re.finditer(pattern, sentence)]  # A list of full matches and not groups
         print(pattern)
         print(heb_numbers)
@@ -86,23 +90,30 @@ def numberExchange(sentence):
                     value = 20
                 else:
                     value = i * 10
-                next = sentence[tup[1] + 1:].find(" ")
+                next = sentence[tup[1] + 1:].find("\s")
                 for j in range(len(regex_numbers_heb)):  # Finding if there is a ones value and if so what is it.
                     pattern2 = and_str + regex_numbers_heb[j] + tens + ten
                     match2 = re.match(pattern2, sentence[tup[1] + 1:tup[1] + next + 1])
                     if match2 and match2.group(1):  # Checks whether there is indeed "and" before the digit.
-                        pattern += " " + pattern2
+                        pattern += "\s" + pattern2
                         value += j + 1
                         break
 
-            if not match.group(3):  # Then it is a number up until 10 (no prefix or suffix)
+            if not match.group(3) and match.group(5):  # Then it is a number up until 10 (no prefix or suffix)
+                if match.group(2) == "חודשיים":
+                    might_be_unit = " חודשים"
+                elif match.group(2) == "שנתיים":
+                    might_be_unit = " שנים"
                 value = i
 
             if match.group(4):  # Between 10 and 20
                 value = i + 10
-            print(value)
-            new_sentence = re.sub(pattern, str(value), new_sentence)
-            print(new_sentence)
+            print(pattern + half)
+            if re.search(pattern + half, new_sentence):
+                value += 0.5
+                might_be_half = half
+            new_sentence = re.sub(pattern + might_be_half, str(value) + might_be_unit, new_sentence)
+
         i += 1
 
     return new_sentence
