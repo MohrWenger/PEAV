@@ -38,7 +38,7 @@ PROBATION = 1
 COM_SERVICE = 2
 
 YEAR_REG = r"([0-3]{0,1}[0-9]\/[0-2]{0,1}[0-9]\/[0-2]{0,1}[0-9]{1,3})|([0-3]{0,1}[0-9]\.[0-2]{0,1}[0-9]\.[0-2]{0,1}[0-9]{1,3})"
-HEB_YEAR_EXP = "שנ[ים]*[ות]*|שנה|שנתיים"
+HEB_YEAR_EXP = "שנ[ים]*[ות]*"  # remember that I took dwon שנה|שנתיים
 HEB_MONTH_EXP = "חו*דש"
 YEARS = "שנים"
 MONTHS = "חודשים"
@@ -57,7 +57,7 @@ NUM_UNITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
          "אחד", "שתים", "שתיים", "שלוש", "ארבע", "חמש", "שש", "שבע", "שמונה", "תשע",
          "עשר", "אחת", "שנים", "שניים", "", "חמישה", "", "שישה"]
 
-regex_numbers_heb = ["(אח[ד|ת] |חודש )", "(שנתיי?ם|חודשיים|שתיי?ם|שניים)", "(שלושה?)", "(ארבעה?)", "(חמי?שה?)",
+regex_numbers_heb = ["(אח[ד|ת]|לחודש|לשנה|לשנת)", "(שנתיי?ם|חודשיים|שתיי?ם|שניים)", "(שלושה?)", "(ארבעה?)", "(חמי?שה?)",
                      "(שישה|ששה?)", "(שי?בעה?)", "(שמונה?)", "(תשעה?)", "(עשרה?)"]
 ten = "(\s?-?\s?עשרה?)?"
 and_str = "(ו)?"
@@ -79,8 +79,8 @@ def numberExchange(sentence):
     for word in regex_numbers_heb:  # Go over the regexes and find number expressions
         pattern = and_str + word + tens + ten + unit_check  # Creating a regex with groups according to hebrew language rules
         heb_numbers = [m.span() for m in re.finditer(pattern, sentence)]  # A list of full matches and not groups
-        print(pattern)
-        print(heb_numbers)
+        # print(pattern)
+        # print(heb_numbers)
         for tup in heb_numbers:
             value = 0
             match = re.match(pattern, sentence[tup[0]:tup[1]])  # This is meant to find the groups within a previuosly found pattern
@@ -104,18 +104,18 @@ def numberExchange(sentence):
                     might_be_unit = " חודשים"
                 elif match.group(2) == "שנתיים":
                     might_be_unit = " שנים"
+                elif not re.sub("לשנ[ה|ת]\s", "", match.group(0)):
+                    might_be_unit = " שנה"
                 value = i
 
             if match.group(4):  # Between 10 and 20
                 value = i + 10
-            print(pattern + half)
+            # print(pattern + half)
             if re.search(pattern + half, new_sentence):
                 value += 0.5
                 might_be_half = half
             new_sentence = re.sub(pattern + might_be_half, str(value) + might_be_unit, new_sentence)
-
         i += 1
-
     return new_sentence
 
 def vote_for_time(t, act_sent, t_units):
@@ -134,6 +134,8 @@ def vote_for_time(t, act_sent, t_units):
     # Make sure it is not a page index.
     if act_sent.find("עמוד") != -1 and act_sent.find("עמוד") <= act_sent.find(t) <= (act_sent.find("עמוד") + 6):
         score += 100
+
+    # Check if it is under the first section (א) TODO in choosing the sentence level
 
     #Make sure it is not a date:
     # dates = re.findall(YEAR_REG, act_sent)
@@ -189,7 +191,6 @@ def find_time_act(act_sent):
         t_units = find_time_units(act_sent)
         for t in times:
             if (t_units == YEAR and float(t) > 20) or ( float(t) > 20 * 12) :
-                print("entered this")
                 continue
 
             else:
@@ -300,7 +301,7 @@ def extracting_penalty(text, filename ):
     time_unit = "not found"
     if len(sentences) > 0:
         len_sent = len_sent[::-1]
-        print("Sentences = ", sentences)
+        # print("Sentences = ", sentences)
         max_score_act = -10
         max_score_prob = -10
         for i, sentence in enumerate(sentences[::-1]):
@@ -388,21 +389,21 @@ def fromVerdictsToDB():
     batch = pd.read_csv("Igud_Gzar2 - Sheet1.csv", error_bad_lines=False)
     files = batch['קובץ']  # Take all htm urls as a list
 
-    with open('test_case_filenames.txt') as json_file:
-        relevant_cases = json.load(json_file)
-        for i, filename in enumerate(os.listdir(directory)):  # when iterating through all files in folder
+    # with open('test_case_filenames.txt') as json_file:
+    #     relevant_cases = json.load(json_file)  # Cases of the validation file
+        # for i, filename in enumerate(os.listdir(directory)):  # when iterating through all files in folder
 
-            # for i in range(len(files)):                     # when iterating through all files in igud colum
-            #     if type(files[i]) == str:
-            #         filename = add_to_txt_db(files[i], urlToText(files[i]), "mechozi")
+    for i in range(len(files)):                     # when iterating through all files that are Gzar Dins
+        if type(files[i]) == str:
+            filename = add_to_txt_db(files[i], "urlToText(files[i])", "mechozi", name_only= True)
 
-            if filename.endswith(".txt") and counter < 150 and filename in relevant_cases:
+            if filename.endswith(".txt") and counter < 150: #and filename in files:# and filename in relevant_cases:
                 counter += 1
                 file_name = os.path.join(directory, filename)
                 text = open(file_name, "r", encoding="utf-8").read()
 
                 print("^^^ File is ", file_name, " ^^^ - not psak"," counter = " ,counter)
-                if filename.find("ME-09-09-8805-668.txt") != -1:
+                if filename.find("SH-12-03-28879-11.txt") != -1:
                     print("break point")
 
                 main_penalty, sentence, all_sentences, all_times, time, time_unit = extracting_penalty(text, filename) #Here I call the penalty func
@@ -417,7 +418,7 @@ def fromVerdictsToDB():
             else:
                 continue
 
-            db.to_csv('verdict_penalty.csv', encoding= 'utf-8')
+        db.to_csv('verdict_penalty.csv', encoding= 'utf-8')
 
 def from_sentence_list(case_names, sentence_list):
     """
@@ -467,6 +468,6 @@ if __name__ == "__main__":
     with open('verdict_list.txt') as json_file:
         verdicts_list = json.load(json_file)
 
-    # fromVerdictsToDB()
+    fromVerdictsToDB()
 
-    pipline_on_test_set()
+    # pipline_on_test_set()
