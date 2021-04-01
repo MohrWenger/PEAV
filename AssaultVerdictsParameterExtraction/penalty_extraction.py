@@ -58,7 +58,7 @@ NUM_UNITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
          "עשר", "אחת", "שנים", "שניים", "", "חמישה", "", "שישה"]
 
 regex_numbers_heb = ["(אח[ד|ת] |חודש )", "(שנתיי?ם|חודשיים|שתיי?ם|שניים)", "(שלושה?)", "(ארבעה?)", "(חמי?שה?)",
-                     "(שישה|שש)", "(שי?בעה?)", "(שמונה?)", "(תשעה?)", "(עשרה?)"]
+                     "(שישה|ששה?)", "(שי?בעה?)", "(שמונה?)", "(תשעה?)", "(עשרה?)"]
 ten = "(\s?-?\s?עשרה?)?"
 and_str = "(ו)?"
 tens = "(ים)?"
@@ -127,13 +127,19 @@ def vote_for_time(t, act_sent, t_units):
     """
     if act_sent.find((BAFOAL)) != -1:
         score = np.abs(act_sent.find(BAFOAL) - act_sent.find(t)) #starting from measuring the distance to the word of actual.
-    else:
+    else: #TODO Maybe some flag but not sure?
         score = 0
 
     time_ind = act_sent.find(t)
     # Make sure it is not a page index.
     if act_sent.find("עמוד") != -1 and act_sent.find("עמוד") <= act_sent.find(t) <= (act_sent.find("עמוד") + 6):
         score += 100
+
+    #Make sure it is not a date:
+    # dates = re.findall(YEAR_REG, act_sent)
+    # if len(dates) > 0:
+    #     for d in dates:
+    #     print("date place = ", dates)
 
     #Distance from a time unit
     units = [(-1,-1)]
@@ -167,12 +173,13 @@ def find_time_act(act_sent):
     """
     act_sent = numberExchange(act_sent)
     # act_sent = replace_value_with_key(act_sent)
-    times = re.findall("[0-9]+", act_sent) #finds all the numbers, assumes word numbers were converted.
+    times = re.findall("([0-9]+(\.5)?)", act_sent) #finds all the numbers, assumes word numbers were converted.
+    times = [x[0] for x in times] #takes only full matches
     times_and_score = {}
     min_score = 10000
     winner_time = '0'
 
-    if len(times) > 2 and int(times[0]) == (int(times[1]) + int(times[2])): #A structure that returns: X1 time in total X2 actual and X3 probation
+    if len(times) > 2 and float(times[0]) == (float(times[1]) + float(times[2])): #A structure that returns: X1 time in total X2 actual and X3 probation
         winner_time = times[1]
 
     elif act_sent.find("יתר") != -1:
@@ -181,7 +188,7 @@ def find_time_act(act_sent):
     else:
         t_units = find_time_units(act_sent)
         for t in times:
-            if (t_units == YEAR and int (t) > 20) or ( int(t) > 20 * 12) :
+            if (t_units == YEAR and float(t) > 20) or ( float(t) > 20 * 12) :
                 print("entered this")
                 continue
 
