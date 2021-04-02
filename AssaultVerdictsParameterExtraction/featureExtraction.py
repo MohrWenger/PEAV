@@ -12,6 +12,30 @@ HEB_WORDS_TO_EXTRACT = ['עו*תרה*(ים)*(ות)*','ה*תובעת*','ביקש�
                         '[נמ]טילה*(ים)*(ות)*',' ד[(נה)(ן)(נים)(נות)]','משיתה*','מחליטה*(ים)*(ות)*','לגזור','להטיל',
                         'יי*מצא מתאים']
 
+
+def extract_important_words(sentence, words):
+    list_of_indices = []
+    for word in words:
+        indices = [index.start() for index in re.finditer(word, sentence)]
+        list_of_indices.append(indices)
+    return list_of_indices
+
+
+def extracting_penalty(text):
+    sentences = []
+    len_sent = []
+    indices = [m.start() for m in re.finditer("מאסר", text)]
+    for x in re.finditer("שירות", text):
+        indices.append(x.start())
+    for i in indices:  # goes over all the indices of "maasar" in the text from last to first
+        start = text.rfind(".", 0, i)
+        end = text.find(".", i, len(text))
+        sentence = text[start+1:end+1]
+        sentences.append(sentence)
+        len_sent.append(end - start)
+    return sentences, len_sent
+
+
 def calc_score(sentence):
     score_act = 0
     score_prob = 0
@@ -95,10 +119,24 @@ def calc_punishment(sentence):
 
 def extract(directory):
     featureDB = pd.DataFrame()
+    counter = 0
     for filename in os.listdir(directory):
-        text = open(filename, "r", encoding="utf-8").read()
-        featureDB = featureDB.append()
+        if counter < 150:
+            text = open(path+filename, "r", encoding="utf-8").read()
+            sentences, len_sentences = extracting_penalty(text)
+            for i in range(len(sentences)):
+                important_words_list = extract_important_words(sentences[i], HEB_WORDS_TO_EXTRACT)
+                sentence_line = pd.DataFrame(
+                    [[filename, len_sentences[i]] + important_words_list],
+                    # here I add values to DB
+                    columns=["filename", "length"] + HEB_WORDS_TO_EXTRACT)
+                featureDB = pd.concat([featureDB, sentence_line])
+            counter += 1
+    featureDB.to_csv("feature_DB.csv", encoding="utf-8")
 
+
+path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/final_verdicts_dir/"
+extract(path)
 
 
 
