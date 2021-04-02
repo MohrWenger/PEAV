@@ -420,8 +420,6 @@ def fromVerdictsToDB(running_opt):
     db = pd.DataFrame()
     directory = VERDICTS_DIR               #text files eddition:
     counter = 0
-    batch = pd.read_csv("Igud_Gzar2 - Sheet1.csv", error_bad_lines=False)
-    files = batch['קובץ']  # Take all htm urls as a list
 
     if running_opt == 0:
         with open('test_case_filenames.txt') as json_file:
@@ -433,6 +431,8 @@ def fromVerdictsToDB(running_opt):
                     db = coreFromVerdicts(db, filename, directory)
 
     elif running_opt == 1:
+        batch = pd.read_csv("Igud_Gzar2 - Sheet1.csv", error_bad_lines=False)
+        files = batch['קובץ']  # Take all htm urls as a list
         for i in range(len(files)):                     # when iterating through all files that are Gzar Dins
             if type(files[i]) == str:
                 filename = add_to_txt_db(files[i], "urlToText(files[i])", "mechozi", name_only= True)
@@ -446,7 +446,7 @@ def fromVerdictsToDB(running_opt):
             else:
                 continue
 
-        db.to_csv('verdict_penalty.csv', encoding= 'utf-8')
+    db.to_csv('verdict_penalty.csv', encoding= 'utf-8')
 
 def from_sentence_list(case_names, sentence_list):
     """
