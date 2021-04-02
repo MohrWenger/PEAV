@@ -7,6 +7,7 @@ import re
 import numpy as np
 import pandas as pd
 import json
+from tqdm import tqdm
 
 # VERDICTS_DIR = r"C:\Users\oryiz\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\after_extraction_verdicts\\"
 VERDICTS_DIR = "final_verdicts_dir/"
@@ -286,13 +287,15 @@ def calc_score(sentence):
     return score_act, score_prob
 
 
-def extracting_penalty(text, filename ):
+def extracting_penalty_sentences(text):
+    """
+    This function is responsible for extracting the penalty sentences from the full verdict
+    :param text: This function receives the full verdict's text
+    :return: A list of all the potential relevant sentences and their lengths.
+    """
+
     sentences = []
     len_sent = []
-    penalty = "not found"
-    main_sentence_act = "not found"
-    main_sentence_prob = "not found"
-    print("######################" + filename + "#######################")
     indices = [m.start() for m in re.finditer("מאסר", text)]
 
     for x in re.finditer("שירות", text):
@@ -302,21 +305,34 @@ def extracting_penalty(text, filename ):
         start = text.rfind(".", 0, i)
         end = text.find(".", i, len(text))
         sentence = text[start+1:end+1]
+        sentences.append(sentence)
+        len_sent.append(end - start)
+
+    return sentences, len_sent
+
+def extract_penalty_params(sentences, len_sentences):
+    relevant_sentences = []
+    relevant_sent_lens = []
+
+    for i, sentence in enumerate(sentences): #probsbly there is a better way to account for this but didn't want to change to much.
         for duration in TIME_UNITS_ARR:
             if sentence.find(duration) != -1:
-                sentences.append(sentence)
-                len_sent.append(end - start)
+                relevant_sentences.append(sentence)
+                relevant_sent_lens.append(len_sentences[i])
+
+    penalty = "not found"
+    main_sentence_act = "not found"
+
     all_times = 0
     prison_time = 0
     time_unit = "not found"
-    if len(sentences) > 0:
-        len_sent = len_sent[::-1]
-        # print("Sentences = ", sentences)
+    if len(relevant_sentences) > 0:
+        relevant_sent_lens = relevant_sent_lens[::-1]
         max_score_act = -10
         max_score_prob = -10
-        for i, sentence in enumerate(sentences[::-1]):
+        for i, sentence in enumerate(relevant_sentences[::-1]):
             scr_act, scr_prob = calc_score(sentence)
-            scr_act = scr_act/len_sent[i]
+            scr_act = scr_act / relevant_sent_lens[i]
 
             if scr_act > max_score_act:
                 max_score_act = scr_act
@@ -395,9 +411,8 @@ def coreFromVerdicts(db, filename, directory):
     # print("^^^ File is ", file_name, " ^^^ - not psak", " counter = ", counter)
     if filename.find("SH-12-03-28879-11.txt") != -1:
         print("break point")
-
-    main_penalty, sentence, all_sentences, all_times, time, time_unit = extracting_penalty(text,
-                                                                                           filename)  # Here I call the penalty func
+    sentence_list, len_sent = extracting_penalty_sentences(text)
+    main_penalty, sentence, all_sentences, all_times, time, time_unit = extract_penalty_params(sentence_list, len_sent)  # Here I call the penalty func
 
     # batch.loc[i,"PENALTY_SENTENCE"] = main_penalty
     # batch.loc[i,"VOTED TIME"] = time
@@ -424,7 +439,7 @@ def fromVerdictsToDB(running_opt):
     if running_opt == 0:
         with open('test_case_filenames.txt') as json_file:
             relevant_cases = json.load(json_file)  # Cases of the validation file
-            for i, filename in enumerate(os.listdir(directory)):  # when iterating through all files in folder
+            for i, filename in tqdm(enumerate(os.listdir(directory))):  # when iterating through all files in folder
                 if filename.endswith(".txt") and filename in relevant_cases:
                     counter += 1
                     print(counter)
@@ -439,8 +454,8 @@ def fromVerdictsToDB(running_opt):
                 db = coreFromVerdicts(db, filename, directory)
 
     elif running_opt == 2:
-        for i, filename in enumerate(os.listdir(directory)):  # when iterating through all files in folder
-            if filename.endswith(".txt") and counter < 150:
+        for i, filename in tqdm(enumerate(os.listdir(directory))):  # when iterating through all files in folder
+            if filename.endswith(".txt"):# and counter < 150:
                 counter += 1
                 db = coreFromVerdicts(db, filename, directory)
             else:
@@ -496,6 +511,6 @@ if __name__ == "__main__":
     with open('verdict_list.txt') as json_file:
         verdicts_list = json.load(json_file)
 
-    fromVerdictsToDB(0)
+    fromVerdictsToDB(2)
 
     # pipline_on_test_set()
