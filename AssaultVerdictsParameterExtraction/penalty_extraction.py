@@ -270,9 +270,9 @@ def calc_score(sentence):
                 score_prob += 2
 
     for w in list_of_good_words:
-        if re.search(w,sentence):
-            score_act +=4
-            score_prob +=4
+        if re.search(w, sentence):
+            score_act += 4
+            score_prob += 4
 
     for wr in list_of_moderate_good_words:
         if re.search(wr, sentence):

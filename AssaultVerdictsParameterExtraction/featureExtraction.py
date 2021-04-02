@@ -1,4 +1,8 @@
 import re
+import os
+import pandas as pd
+
+
 
 
 def extracting_penalty(text, filename, all, not_good):
@@ -114,6 +118,7 @@ def calc_score(sentence):
 
     return score_act, score_prob
 
+
 def calc_punishment(sentence): #TODO - call this somewhere
     score_for_penalty = [0,0,0]
     if sentence.find("בפועל") != -1:
@@ -141,4 +146,14 @@ def calc_punishment(sentence): #TODO - call this somewhere
             score_for_penalty[COM_SERVICE] += 3
 
     return score_for_penalty
+
+
+def extract(directory):
+    featureDB = pd.DataFrame()
+    for filename in os.listdir(directory):
+        text = open(filename, "r", encoding="utf-8").read()
+        featureDB = featureDB.append()
+
+
+
 
