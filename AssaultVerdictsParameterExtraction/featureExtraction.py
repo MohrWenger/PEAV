@@ -1,14 +1,14 @@
 import re
 import os
 import pandas as pd
-from .penalty_extraction import extracting_penalty_sentences
+from AssaultVerdictsParameterExtraction.penalty_extraction import extracting_penalty_sentences as ext_sent
 
 COL_NAMES = ["case_num", "JAIL", "PROBATION", "COM SERV", "REQUEST_1", "REQUEST_2","REQUEST_3", "PROCEQUTION", "EXAM", "MILITARY",
              "SAFE_SERVICE", "KEVA", "DAYS", "BETWEEN", "MITHAM", "REDUCED", "UPPER_LIMIT", "DERIVED", ""]
 
 # Order of copying: list of bad words, list of bad signs list of good words list of moderate words
 HEB_WORDS_TO_EXTRACT = ['עו*תרה*(ים)*(ות)*','ה*תובעת*','ביקשה*','ה*תביעה','מבחן','צבאי','בי*טחון','קבע','דורשת*','בימים',
-                        'בין','מתחם','יפחת','יעלה','נגזר','נדון','ה*צדדים',"\"","/","\\",":",'גוזרת*(ים)*(ות)*',
+                        'בין','מתחם','יפחת','יעלה','נגזר','נדון','ה*צדדים',"\"","/",r"\\",":",'גוזרת*(ים)*(ות)*',
                         '[נמ]טילה*(ים)*(ות)*',' ד[(נה)(ן)(נים)(נות)]','משיתה*','מחליטה*(ים)*(ות)*','לגזור','להטיל',
                         'יי*מצא מתאים']
 
@@ -21,19 +21,19 @@ def extract_important_words(sentence, words):
     return list_of_indices
 
 
-def extracting_penalty(text):
-    sentences = []
-    len_sent = []
-    indices = [m.start() for m in re.finditer("מאסר", text)]
-    for x in re.finditer("שירות", text):
-        indices.append(x.start())
-    for i in indices:  # goes over all the indices of "maasar" in the text from last to first
-        start = text.rfind(".", 0, i)
-        end = text.find(".", i, len(text))
-        sentence = text[start+1:end+1]
-        sentences.append(sentence)
-        len_sent.append(end - start)
-    return sentences, len_sent
+# def extracting_penalty(text):
+#     sentences = []
+#     len_sent = []
+#     indices = [m.start() for m in re.finditer("מאסר", text)]
+#     for x in re.finditer("שירות", text):
+#         indices.append(x.start())
+#     for i in indices:  # goes over all the indices of "maasar" in the text from last to first
+#         start = text.rfind(".", 0, i)
+#         end = text.find(".", i, len(text))
+#         sentence = text[start+1:end+1]
+#         sentences.append(sentence)
+#         len_sent.append(end - start)
+#     return sentences, len_sent
 
 
 def calc_score(sentence):
@@ -123,7 +123,7 @@ def extract(directory):
     for filename in os.listdir(directory):
         if counter < 150:
             text = open(path+filename, "r", encoding="utf-8").read()
-            sentences, len_sentences = extracting_penalty(text)
+            sentences, len_sentences = ext_sent(text)
             for i in range(len(sentences)):
                 important_words_list = extract_important_words(sentences[i], HEB_WORDS_TO_EXTRACT)
                 sentence_line = pd.DataFrame(
@@ -135,7 +135,7 @@ def extract(directory):
     featureDB.to_csv("feature_DB.csv", encoding="utf-8")
 
 
-path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/final_verdicts_dir/"
+path = "C:\\Users\\oryiz\\PycharmProjects\\PEAV\\AssaultVerdictsParameterExtraction\\final_verdicts_dir\\"
 extract(path)
 
 
