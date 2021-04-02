@@ -2,14 +2,12 @@ import re
 import os
 import pandas as pd
 
-COL_NAMES = ["case_num", "JAIL", "PROBATION", "COM SERV", "REQUEST_1", "REQUEST_2","REQUEST_3", "PROCEQUTION", "EXAM", "MILITARY",
-             "SAFE_SERVICE", "KEVA", "DAYS", "BETWEEN", "MITHAM", "REDUCED", "UPPER_LIMIT", "DERIVED", ""]
 
-# Order of copying: list of bad words, list of bad signs list of good words list of moderate words
-HEB_WORDS_TO_EXTRACT = ['עו*תרה*(ים)*(ות)*','ה*תובעת*','ביקשה*','ה*תביעה','מבחן','צבאי','בי*טחון','קבע','דורשת*','בימים',
-                        'בין','מתחם','יפחת','יעלה','נגזר','נדון','ה*צדדים',"\"","/","\\",":",'גוזרת*(ים)*(ות)*',
-                        '[נמ]טילה*(ים)*(ות)*',' ד[(נה)(ן)(נים)(נות)]','משיתה*','מחליטה*(ים)*(ות)*','לגזור','להטיל',
-                        'יי*מצא מתאים']
+def extractImportantWords(sentence, words):
+    list_of_indices = []
+    for word in words:
+        list_of_indices.append([m.span()[0] for m in re.finditer(word, sentence)])
+    return list_of_indices
 
 
 def extracting_penalty(text, filename):
@@ -162,10 +160,5 @@ def extract(directory):
         COL_NAMES_TEMP = [""]
 
 
-def extractImportantWords(sentence, words):
-    list_of_indices = []
-    for word in words:
-        list_of_indices.append([m.span()[0] for m in re.finditer(word, sentence)])
-    return list_of_indices
 
 
