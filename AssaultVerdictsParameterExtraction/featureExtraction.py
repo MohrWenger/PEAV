@@ -12,14 +12,12 @@ HEB_WORDS_TO_EXTRACT = ['עו*תרה*(ים)*(ות)*','ה*תובעת*','ביקש�
                         'יי*מצא מתאים']
 
 
-def extracting_penalty(text, filename, all, not_good):
+def extracting_penalty(text, filename):
     sentences = []
     len_sent = []
     penalty = "not found"
     main_sentence_act = "not found"
     main_sentence_prob = "not found"
-    # if text.find("גזר דין") != -1:
-    all += 1
     print("######################" + filename + "#######################")
     indices = [m.start() for m in re.finditer("מאסר", text)]
     for x in re.finditer("שירות", text):
@@ -126,7 +124,7 @@ def calc_score(sentence):
     return score_act, score_prob
 
 
-def calc_punishment(sentence): #TODO - call this somewhere
+def calc_punishment(sentence):
     score_for_penalty = [0,0,0]
     if sentence.find("בפועל") != -1:
         score_for_penalty[ACTUAL_JAIL] += 3
@@ -161,6 +159,13 @@ def extract(directory):
         text = open(filename, "r", encoding="utf-8").read()
         featureDB = featureDB.append()
 
+        COL_NAMES_TEMP = [""]
 
+
+def extractImportantWords(sentence, words):
+    list_of_indices = []
+    for word in words:
+        list_of_indices.append([m.span()[0] for m in re.finditer(word, sentence)])
+    return list_of_indices
 
 
