@@ -56,13 +56,14 @@ def loss_1_0(case_name_list, check_match_func, df, all_output, goal_output, rele
     df.to_csv('validation result.csv', encoding= 'utf-8')
     return correct_rate
 
+
 def time_comp(pred_case_name, goal_case_name, pred_line,relevent_pred_col, goal_line, relevent_test_col,write_to_df = False):
     pred_time = pred_line[relevent_pred_col].tolist()[0]
     goal_time = goal_line[relevent_test_col].tolist()[0]
     if pred_time != NO_SENTENCE:
         goal_time = float(goal_time)
         pred_time = float(pred_time)
-        dist =  np.abs(goal_time - pred_time)
+        dist = np.abs(goal_time - pred_time)
     else:
         dist = "NO sentence"
 

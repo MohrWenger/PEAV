@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import json
 
-VERDICTS_DIR = r"C:\Users\oryiz\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\after_extraction_verdicts\\"
+# VERDICTS_DIR = r"C:\Users\oryiz\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\after_extraction_verdicts\\"
 VERDICTS_DIR = "final_verdicts_dir/"
 
 DISTRICT = "district"
@@ -38,7 +38,7 @@ PROBATION = 1
 COM_SERVICE = 2
 
 YEAR_REG = r"([0-3]{0,1}[0-9]\/[0-2]{0,1}[0-9]\/[0-2]{0,1}[0-9]{1,3})|([0-3]{0,1}[0-9]\.[0-2]{0,1}[0-9]\.[0-2]{0,1}[0-9]{1,3})"
-HEB_YEAR_EXP = "שנ[ים]*[ות]*"  # remember that I took dwon שנה|שנתיים
+HEB_YEAR_EXP = "שנ[ים]*[ות]*"  # remember that I took down שנה|שנתיים
 HEB_MONTH_EXP = "חו*דש"
 YEARS = "שנים"
 MONTHS = "חודשים"
@@ -127,7 +127,7 @@ def vote_for_time(t, act_sent, t_units):
     """
     if act_sent.find((BAFOAL)) != -1:
         score = np.abs(act_sent.find(BAFOAL) - act_sent.find(t)) #starting from measuring the distance to the word of actual.
-    else: #TODO Maybe some flag but not sure?
+    else:  # TODO Maybe some flag but not sure?
         score = 0
 
     time_ind = act_sent.find(t)
@@ -167,6 +167,7 @@ def vote_for_time(t, act_sent, t_units):
 
     return score
 
+
 def find_time_act(act_sent):
     """
     This function receives a sentence and extracts the actual jail time given.
@@ -203,6 +204,7 @@ def find_time_act(act_sent):
             # reg = '\b(?:'+t+'\W+(?:\w+\W+){0,'+str(dist)+'}?'+BAFOAL+'|'+BAFOAL+'\W+(?:\w+\W+){0,'+str(dist)+'}?'+t+')\b'
     return times_and_score, winner_time
 
+
 def replace_value_with_key(sentence):
     """
 
@@ -219,7 +221,13 @@ def replace_value_with_key(sentence):
 
     return sentence
 
+
 def calc_punishment(sentence):
+    """
+    This function chooses which of the punishments to score, according to which word appears
+    :param sentence:
+    :return:
+    """
     score_for_penalty = [0,0,0]
 
     if sentence.find("בפועל") != -1:
@@ -233,6 +241,7 @@ def calc_punishment(sentence):
             score_for_penalty[COM_SERVICE] += 3
 
     return score_for_penalty
+
 
 def calc_score(sentence):
     score_act = 0
@@ -275,6 +284,7 @@ def calc_score(sentence):
     score_prob += punishment[1]
 
     return score_act, score_prob
+
 
 def extracting_penalty(text, filename ):
     sentences = []
@@ -377,7 +387,31 @@ def urlToText(url):
     # print(text)
     return text
 
-def fromVerdictsToDB():
+
+def coreFromVerdicts(db, filename, directory):
+    file_name = os.path.join(directory, filename)
+    text = open(file_name, "r", encoding="utf-8").read()
+
+    # print("^^^ File is ", file_name, " ^^^ - not psak", " counter = ", counter)
+    if filename.find("SH-12-03-28879-11.txt") != -1:
+        print("break point")
+
+    main_penalty, sentence, all_sentences, all_times, time, time_unit = extracting_penalty(text,
+                                                                                           filename)  # Here I call the penalty func
+
+    # batch.loc[i,"PENALTY_SENTENCE"] = main_penalty
+    # batch.loc[i,"VOTED TIME"] = time
+
+    sentence_line = pd.DataFrame(
+        [[filename, "Gzar", main_penalty, sentence, all_sentences, all_times, time, time_unit]],
+        # here I add values to DB
+        columns=[CASE_NUM, "TYPE", "Main Punishment", "PENALTY_SENTENCE", "ALL SENTENCES", "OPTIONAL TIMES",
+                 "VOTED TIME", "units"])  # Here adding a title
+    db = pd.concat([db, sentence_line])
+    return db
+
+
+def fromVerdictsToDB(running_opt):
     """
     This function creates the feature db.
     :param df:
@@ -389,32 +423,26 @@ def fromVerdictsToDB():
     batch = pd.read_csv("Igud_Gzar2 - Sheet1.csv", error_bad_lines=False)
     files = batch['קובץ']  # Take all htm urls as a list
 
-    # with open('test_case_filenames.txt') as json_file:
-    #     relevant_cases = json.load(json_file)  # Cases of the validation file
-        # for i, filename in enumerate(os.listdir(directory)):  # when iterating through all files in folder
+    if running_opt == 0:
+        with open('test_case_filenames.txt') as json_file:
+            relevant_cases = json.load(json_file)  # Cases of the validation file
+            for i, filename in enumerate(os.listdir(directory)):  # when iterating through all files in folder
+                if filename.endswith(".txt") and filename in relevant_cases:
+                    counter += 1
+                    print(counter)
+                    db = coreFromVerdicts(db, filename, directory)
 
-    for i in range(len(files)):                     # when iterating through all files that are Gzar Dins
-        if type(files[i]) == str:
-            filename = add_to_txt_db(files[i], "urlToText(files[i])", "mechozi", name_only= True)
+    elif running_opt == 1:
+        for i in range(len(files)):                     # when iterating through all files that are Gzar Dins
+            if type(files[i]) == str:
+                filename = add_to_txt_db(files[i], "urlToText(files[i])", "mechozi", name_only= True)
+                db = coreFromVerdicts(db, filename, directory)
 
-            if filename.endswith(".txt") and counter < 150: #and filename in files:# and filename in relevant_cases:
+    elif running_opt == 2:
+        for i, filename in enumerate(os.listdir(directory)):  # when iterating through all files in folder
+            if filename.endswith(".txt") and counter < 150:
                 counter += 1
-                file_name = os.path.join(directory, filename)
-                text = open(file_name, "r", encoding="utf-8").read()
-
-                print("^^^ File is ", file_name, " ^^^ - not psak"," counter = " ,counter)
-                if filename.find("SH-12-03-28879-11.txt") != -1:
-                    print("break point")
-
-                main_penalty, sentence, all_sentences, all_times, time, time_unit = extracting_penalty(text, filename) #Here I call the penalty func
-
-                # batch.loc[i,"PENALTY_SENTENCE"] = main_penalty
-                # batch.loc[i,"VOTED TIME"] = time
-
-                sentence_line = pd.DataFrame([[filename,"Gzar", main_penalty,     sentence,          all_sentences,   all_times,       time, time_unit]], #here I add values to DB
-                                             columns =[CASE_NUM,     "TYPE","Main Punishment","PENALTY_SENTENCE", "ALL SENTENCES", "OPTIONAL TIMES", "VOTED TIME", "units"]) #Here adding a title
-                db = pd.concat([db,sentence_line ])
-
+                db = coreFromVerdicts(db, filename, directory)
             else:
                 continue
 
@@ -468,6 +496,6 @@ if __name__ == "__main__":
     with open('verdict_list.txt') as json_file:
         verdicts_list = json.load(json_file)
 
-    fromVerdictsToDB()
+    fromVerdictsToDB(0)
 
     # pipline_on_test_set()
