@@ -2,6 +2,8 @@ import re
 import os
 import pandas as pd
 from AssaultVerdictsParameterExtraction.penalty_extraction import extracting_penalty_sentences as ext_sent
+import json
+from tqdm import tqdm
 
 COL_NAMES = ["case_num", "JAIL", "PROBATION", "COM SERV", "REQUEST_1", "REQUEST_2","REQUEST_3", "PROCEQUTION", "EXAM", "MILITARY",
              "SAFE_SERVICE", "KEVA", "DAYS", "BETWEEN", "MITHAM", "REDUCED", "UPPER_LIMIT", "DERIVED", ""]
@@ -116,27 +118,42 @@ def calc_punishment(sentence):
 
     return score_for_penalty
 
+def operating_func(filename):
+    text = open(path + filename, "r", encoding="utf-8").read()
+    sentences, len_sentences = ext_sent(text)
+    for i in range(len(sentences)):
+        important_words_list = extract_important_words(sentences[i], HEB_WORDS_TO_EXTRACT)
+        sentence_line = pd.DataFrame(
+            [[filename, len_sentences[i]] + important_words_list],
+            # here I add values to DB
+            columns=["filename", "length"] + HEB_WORDS_TO_EXTRACT)
+    return sentence_line
 
-def extract(directory):
+def extract(directory, running_opt):
     featureDB = pd.DataFrame()
-    counter = 0
-    for filename in os.listdir(directory):
-        if counter < 150:
-            text = open(path+filename, "r", encoding="utf-8").read()
-            sentences, len_sentences = ext_sent(text)
-            for i in range(len(sentences)):
-                important_words_list = extract_important_words(sentences[i], HEB_WORDS_TO_EXTRACT)
-                sentence_line = pd.DataFrame(
-                    [[filename, len_sentences[i]] + important_words_list],
-                    # here I add values to DB
-                    columns=["filename", "length"] + HEB_WORDS_TO_EXTRACT)
+
+    if running_opt == 0:
+        with open('test_case_filenames.txt') as json_file:
+            relevant_cases = json.load(json_file)  # Cases of the validation file
+            for i, filename in tqdm(enumerate(os.listdir(directory))):  # when iterating through all files in folder
+                if filename.endswith(".txt") and filename in relevant_cases:
+                    sentence_line = operating_func(filename)
+                    featureDB = pd.concat([featureDB, sentence_line])
+
+    elif running_opt == 2:
+        counter = 0
+        for filename in os.listdir(directory):
+            if counter < 150:
+                sentence_line = operating_func(filename)
                 featureDB = pd.concat([featureDB, sentence_line])
-            counter += 1
+                counter += 1
+
     featureDB.to_csv("feature_DB.csv", encoding="utf-8")
+    return featureDB
 
 
 path = "C:\\Users\\oryiz\\PycharmProjects\\PEAV\\AssaultVerdictsParameterExtraction\\final_verdicts_dir\\"
-extract(path)
+extract(path,2)
 
 
 
