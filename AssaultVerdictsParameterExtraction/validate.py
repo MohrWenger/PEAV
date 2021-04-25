@@ -1,6 +1,7 @@
 import pandas as pd
 import json
 import numpy as np
+import re
 
 """
 This file is used for validating our output in comparison with a mannualy segmented dataset
@@ -17,6 +18,7 @@ PRED_TIME = "VOTED TIME"
 TEST_TIME = "מספר חודשי עונש בפועל (מספר)"
 
 NO_SENTENCE = " -- "
+
 
 def loss_1_0(case_name_list, check_match_func, df, all_output, goal_output, relevant_pred_col, relevant_test_col):
     """
@@ -43,21 +45,21 @@ def loss_1_0(case_name_list, check_match_func, df, all_output, goal_output, rele
         print(s)
         if case_name_list[i] == "s00001581-359.txt":
             print("break_point")
-        temp_df = check_match_func(predicted_line[OUR_CASENAME], goal_line[TEST_CASENAME],predicted_line, relevant_pred_col, goal_line,relevant_test_col, True)
+        temp_df = check_match_func(predicted_line, relevant_pred_col, goal_line,relevant_test_col, True)
         # temp_df = check_match_func(output_name[i], test_name[i],output_vals[i], validated_vals[i], True)
         if temp_df:
             df = pd.concat([df, temp_df[1]])
             if temp_df[0]:
                 correct_rate += 1
     print(correct_rate)
-    temp_df = df.loc[df["Error (difference)"] != "NO sentence"]
+    # temp_df = df.loc[df["Error (difference)"] != "NO sentence"]
     # print(np.nanmean(np.array(temp_df["Error (difference)"])))
     # print(np.std(temp_df["Error (difference)"]))
     df.to_csv('validation result.csv', encoding= 'utf-8')
     return correct_rate
 
 
-def time_comp(pred_case_name, goal_case_name, pred_line,relevent_pred_col, goal_line, relevent_test_col,write_to_df = False):
+def time_comp(pred_line, relevent_pred_col, goal_line, relevent_test_col, write_to_df=False):
     pred_time = pred_line[relevent_pred_col].tolist()[0]
     goal_time = goal_line[relevent_test_col].tolist()[0]
     if pred_time != NO_SENTENCE:
@@ -102,7 +104,58 @@ def is_t_sentence_in(output_name, test_name,output_val, test_val,write_to_df = F
             print("text val = ", test_val.tolist()[0])
 
 
+def check_subset(sentence1, sentence2, min_len):
+    longer_sent, shorter_sent = (sentence1, sentence2) if len(sentence1) > len(sentence2) else (sentence2, sentence1)
+    for i in range(len(longer_sent) - min_len):
+        if longer_sent[i:i+min_len] in shorter_sent:
+            return True
+    return False
+
+
+# TODO maybe check instead if the tagged number of years is in the predicted sentence
+def validate_sentence(pred_line, relevent_pred_col, goal_line, relevent_test_col, write_to_df=False):
+    """
+
+    :param pred_line:
+    :param relevent_pred_col:
+    :param goal_line:
+    :param relevent_test_col:
+    :param write_to_df:
+    :return: returns 1 if they match and 0 otherwise
+    """
+    our_prediction = pred_line[relevent_pred_col].tolist()[0]
+    tagged = goal_line[relevent_test_col].tolist()[0]
+
+    if type(our_prediction) != str or type(tagged) != str:
+        print(pred_line[OUR_CASENAME])
+        return False
+
+    # some cleaning
+    our_prediction = re.sub("[,.]", "", "".join(our_prediction.split()))
+    tagged = re.sub("[,.]", "", "".join(tagged.split()))
+
+    if write_to_df:
+        if check_subset(our_prediction, tagged, 10):
+            temp_df = pd.DataFrame([[pred_line[OUR_CASENAME], our_prediction, goal_line[TEST_CASENAME], tagged,
+                                     True]],
+                                   columns=["predicted Casename", "predicted after strip", "Goal Casename",
+                                            "Goal after strip",
+                                            "Is t in P"])
+            return True, temp_df
+        temp_df = pd.DataFrame([[pred_line[OUR_CASENAME], our_prediction, goal_line[TEST_CASENAME], tagged,
+                                 False]],
+                               columns=["predicted Casename", "predicted after strip", "Goal Casename",
+                                        "Goal after strip",
+                                        "Is t in P"])
+        return False, temp_df
+    else:
+        if check_subset(our_prediction, tagged, 10):
+            return True
+        return False
+
+
 if __name__ == "__main__":
+
     df = pd.DataFrame()
     with open('test_case_filenames.txt') as json_file:
         relevant_cases = json.load(json_file)
@@ -113,8 +166,8 @@ if __name__ == "__main__":
     our_output = pd.read_csv("verdict_penalty.csv", error_bad_lines=False)
     our_output.sort_values(by=[OUR_CASENAME])
     # relevant_cases.sort()
-    # loss_1_0(relevant_cases, is_t_sentence_in, df, our_output, validated_df, PRED_MAIN_SENTENCE, TEST_MAIN_SENTENCE)
-    loss_1_0(relevant_cases, time_comp, df, our_output, validated_df, PRED_TIME, TEST_TIME)
+    loss_1_0(relevant_cases, validate_sentence, df, our_output, validated_df, PRED_MAIN_SENTENCE, TEST_MAIN_SENTENCE)
+    # loss_1_0(relevant_cases, time_comp, df, our_output, validated_df, PRED_TIME, TEST_TIME)
 
 
 

@@ -52,6 +52,8 @@ C349 = '349'
 C350 = '350'
 C351 = '351'
 
+CLAUSES = [C345, C346, C347, C348, C349, C350, C351]
+
 TIME_UNITS_ARR =  ["חודש", "שנה", "שנים", "שנות", "שעות","שנת","חדש"]
 NUM_UNITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12",
          "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24",
@@ -287,7 +289,7 @@ def calc_score(sentence):
     return score_act, score_prob
 
 
-def extracting_penalty_sentences(text):
+def extracting_penalty_sentences(text, count_sentences=False):
     """
     This function is responsible for extracting the penalty sentences from the full verdict
     :param text: This function receives the full verdict's text
@@ -296,18 +298,28 @@ def extracting_penalty_sentences(text):
 
     sentences = []
     len_sent = []
-    indices = [m.start() for m in re.finditer("מאסר", text)]
+    sent_num = []
+    indices = [m.start() for m in re.finditer("שירות|מאסר", text)]
 
-    for x in re.finditer("שירות", text):
-        indices.append(x.start())
-
+    last_dot = 0
+    sentence_count = 0
     for i in indices: #goes over all the indices of "maasar" in the text from last to first
         start = text.rfind(".", 0, i)
         end = text.find(".", i, len(text))
-        sentence = text[start+1:end+1]
-        sentences.append(sentence)
-        len_sent.append(end - start)
+        num_of_sentences_from_last = re.findall("\.", text[last_dot:end])
 
+        sentence = text[start+1:end+1]
+        if sentence not in sentences:
+            # print(sentence_count)
+            # print(sentence)
+            sentences.append(sentence)
+            len_sent.append(end - start)
+            sentence_count += len(num_of_sentences_from_last)
+            sent_num.append(sentence_count)
+            last_dot = end
+
+    if count_sentences:
+        return sentences, len_sent, sent_num
     return sentences, len_sent
 
 def extract_penalty_params(sentences, len_sentences):
