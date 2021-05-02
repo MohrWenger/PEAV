@@ -11,8 +11,6 @@ import matplotlib.pyplot as plt
 
 SENTENCE = "sentence"
 TAG_COL = "does sentence include punishment"
-FILENAME = "filename"
-#Recive a directory with .txt files
 # path = 'verdicts'
 
 ## TRAIN ## - This is done only on our labled dataset
@@ -61,13 +59,24 @@ tag = db_filtered[s]
 
 # clf = make_pipeline(StandardScaler(), SVC(gamma='auto')) -> I think this class several procedures sequentially.
 
+def one_hot_encoding(predicted, x, tag, db):
+    OHEncoded = pandas.DataFrame()
+    for i in range(len(x)):
+        sentence = db.sentence[x[i][1]]
+        if predicted[i] == 1:
+            line = pandas.DataFrame(
+                    [sentence, tag[i]],
+                    columns=["sentence", "original tag"])
+            pandas.concat([OHEncoded, line])
+    OHEncoded.to_csv("svm_sentences.csv", encoding="utf-8")
+
 
 def predict_func(x_db, test=True):
     x_db = x_db.replace(x_db[SENTENCE].tolist(), db_filtered.index.tolist())
 
     x_train, x_test, y_train, y_test = train_test_split(x_db, tag, test_size=0.2)
 
-    weights = (y_train.to_numpy() * 7) + 1
+    weights = (y_train.to_numpy() * 200) + 1
 
     clf = SVC()
     clf.fit(x_train, y_train, sample_weight=weights)
@@ -87,7 +96,6 @@ def predict_func(x_db, test=True):
 
     fpr, tpr, thresholds = metrics.roc_curve(y, predicted_results, pos_label=1)
 
-
     count_ones = 0
     count_same = 0
     for i in range(len(predicted_results)):
@@ -101,9 +109,10 @@ def predict_func(x_db, test=True):
     print("accuracy overall: ", count_same/len(predicted_results))
     print("accuracy of ones: ", count_ones/sum(y))
     print("AUC VALUE =", metrics.auc(fpr, tpr))
-    metrics.plot_roc_curve(clf, x, y)
-    plt.show()
-# print(predicted_results)
+    # metrics.plot_roc_curve(clf, x, y)
+    # plt.show()
+    one_hot_encoding(predicted_results, x, y, db_filtered)
+
 
 ##Test Train##
 # evaluates predictions
