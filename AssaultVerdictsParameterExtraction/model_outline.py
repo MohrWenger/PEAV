@@ -43,7 +43,7 @@ TAG_COL = "does sentence include punishment"
 # for col, clf in clfs.items():
 #     x_test[col] = clfs[col].fit_transform(x_test[col])
 
-tag = db_filtered[TAG_COL]
+# tag = db_filtered[TAG_COL]
 
 # probably should use 10 fold cross validation from this point
 # x_train, x_test, y_train, y_test = train_test_split(x_db, tag, random_state=0)
