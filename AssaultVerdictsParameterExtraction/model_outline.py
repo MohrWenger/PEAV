@@ -8,7 +8,8 @@ import pandas
 from sklearn.preprocessing import LabelEncoder
 import numpy as np
 import matplotlib.pyplot as plt
-
+from sklearn.manifold import TSNE
+import seaborn as sns
 SENTENCE = "sentence"
 FILE_NAME = "filename"
 TAG_COL = "does sentence include punishment"
@@ -18,18 +19,8 @@ TAG_COL = "does sentence include punishment"
 
 # call feature extraction return a db of all the sentences from all verdicts
 
-# path = "C:\\Users\\oryiz\\PycharmProjects\\PEAV\\AssaultVerdictsParameterExtraction\\final_verdicts_dir\\"
-
-# path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
-path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
-db = pandas.read_csv(path, header=0, na_values='')
-s = 'does sentence include punishment'
-db_filtered = db[(db[s] == 1) | (db[s] == 0)]
-x_db = db_filtered.loc[:, db_filtered.columns != 'does sentence include punishment']
 # x_db = x_db.loc[:, x_db.columns != 'sentence']
 # x_db = x_db.loc[:, x_db.columns != 'filename']
-
-tag = db_filtered[s]
 
 
 # vec = DictVectorizer()
@@ -72,14 +63,18 @@ def smaller_sentence_pool(predicted, x, tag, db):
     return OHEncoded
     # OHEncoded.to_csv("svm_sentences.csv", encoding="utf-8")
 
-
-def train_and_predict_func(x_db, test=True):
-    x_db = x_db.replace(x_db[SENTENCE].tolist(), db_filtered.index.tolist()) # This is the line that replaces sentences
-                                                                             # with indx.
-
+### pre processing ###
+def remove_strings (db):
+    db = db.replace(db[SENTENCE].tolist(), db_filtered.index.tolist())  # This is the line that replaces sentences
+                                                                              # with indx.
     le = LabelEncoder()
-    file_name_dict = le.fit(x_db[FILE_NAME])
-    x_db[FILE_NAME] = file_name_dict.fit_transform(x_db[FILE_NAME])
+    file_name_dict = le.fit(db[FILE_NAME])
+    db[FILE_NAME] = file_name_dict.fit_transform(db[FILE_NAME])
+    return db
+
+##Train##
+def train_and_predict_func(x_db, test=True):
+    x_db = remove_strings(x_db)
 
     x_train, x_test, y_train, y_test = train_test_split(x_db, tag, test_size=0.2)
 
@@ -108,10 +103,7 @@ def train_and_predict_func(x_db, test=True):
         if predicted_results[i] == 1:
             pass
 
-
-
-
-
+# evaluates predictions
 def check_prediction(predicted_results, goal_lables, train_db):
     count_ones = 0
     count_same = 0
@@ -134,12 +126,44 @@ def check_prediction(predicted_results, goal_lables, train_db):
     # one_hot_encoding(predicted_results, x, y, db_filtered)
 
 
-##Test Train##
-# evaluates predictions
-train_and_predict_func(x_db)
 
 
+#### visualization ####
+def vizualize (db):
+    db = remove_strings(db)
+    # correct = db.loc[db[TAG_COL] == 1]
+    # false_sentences = db.loc[db[TAG_COL] == 0]
+    tsne_res = TSNE(n_components=2).fit_transform(db)
+    # false_embedded = tsne.fit_transform(false_sentences)
+    # correct_embedded = tsne.fit_transform(correct)
+    # print(X_embedded.shape)
+    # plt.scatter(false_embedded[:,0], false_embedded[:,1])
+    # plt.scatter(correct_embedded[:,0], correct_embedded[:,1])
+
+    # df_subset = pandas.DataFrame(tsne_res, columns =['tsne-2d-one', 'tsne-2d-two'])
+    db['tsne-2d-one'] = tsne_res[:, 0]
+    db['tsne-2d-two'] = tsne_res[:, 1]
+    plt.figure(figsize=(16, 10))
+    sns.scatterplot(
+        x="tsne-2d-one", y="tsne-2d-two",
+        hue=TAG_COL,
+        palette=sns.color_palette("hls", 2),
+        data=db,
+        legend="full"
+    )
+    plt.savefig("tsne_try1.png")
+    plt.show()
 ## Post Train - single verdict ##
 
 
-
+if __name__ == "__main__":
+    # path = "C:\\Users\\oryiz\\PycharmProjects\\PEAV\\AssaultVerdictsParameterExtraction\\final_verdicts_dir\\"
+    # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
+    path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
+    db = pandas.read_csv(path, header=0, na_values='')
+    s = 'does sentence include punishment'
+    db_filtered = db[(db[s] == 1) | (db[s] == 0)]
+    x_db = db_filtered.loc[:, db_filtered.columns != 'does sentence include punishment']
+    tag = db_filtered[s]
+    vizualize(db_filtered)
+    # train_and_predict_func(x_db)
