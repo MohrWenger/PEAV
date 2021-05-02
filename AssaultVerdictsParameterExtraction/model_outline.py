@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 SENTENCE = "sentence"
+FILE_NAME = "filename"
 TAG_COL = "does sentence include punishment"
 # path = 'verdicts'
 
@@ -19,13 +20,14 @@ TAG_COL = "does sentence include punishment"
 
 # path = "C:\\Users\\oryiz\\PycharmProjects\\PEAV\\AssaultVerdictsParameterExtraction\\final_verdicts_dir\\"
 
-path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
+# path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
+path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
 db = pandas.read_csv(path, header=0, na_values='')
 s = 'does sentence include punishment'
 db_filtered = db[(db[s] == 1) | (db[s] == 0)]
 x_db = db_filtered.loc[:, db_filtered.columns != 'does sentence include punishment']
 # x_db = x_db.loc[:, x_db.columns != 'sentence']
-x_db = x_db.loc[:, x_db.columns != 'filename']
+# x_db = x_db.loc[:, x_db.columns != 'filename']
 
 tag = db_filtered[s]
 
@@ -45,9 +47,8 @@ tag = db_filtered[s]
 #     x_train[col] = clfs[col].fit_transform(x_train[col])
 
 
-# str_cols = x_test.columns[x_test.columns.str.contains('(?:filename|sentence)')]
-# clfs = {c:LabelEncoder() for c in str_cols}
-#
+
+
 # for col, clf in clfs.items():
 #     x_test[col] = clfs[col].fit_transform(x_test[col])
 
@@ -59,7 +60,7 @@ tag = db_filtered[s]
 
 # clf = make_pipeline(StandardScaler(), SVC(gamma='auto')) -> I think this class several procedures sequentially.
 
-def one_hot_encoding(predicted, x, tag, db):
+def smaller_sentence_pool(predicted, x, tag, db):
     OHEncoded = pandas.DataFrame()
     for i in range(len(x)):
         sentence = db.sentence[x[i][1]]
@@ -68,11 +69,17 @@ def one_hot_encoding(predicted, x, tag, db):
                     [sentence, tag[i]],
                     columns=["sentence", "original tag"])
             pandas.concat([OHEncoded, line])
-    OHEncoded.to_csv("svm_sentences.csv", encoding="utf-8")
+    return OHEncoded
+    # OHEncoded.to_csv("svm_sentences.csv", encoding="utf-8")
 
 
-def predict_func(x_db, test=True):
-    x_db = x_db.replace(x_db[SENTENCE].tolist(), db_filtered.index.tolist())
+def train_and_predict_func(x_db, test=True):
+    x_db = x_db.replace(x_db[SENTENCE].tolist(), db_filtered.index.tolist()) # This is the line that replaces sentences
+                                                                             # with indx.
+
+    le = LabelEncoder()
+    file_name_dict = le.fit(x_db[FILE_NAME])
+    x_db[FILE_NAME] = file_name_dict.fit_transform(x_db[FILE_NAME])
 
     x_train, x_test, y_train, y_test = train_test_split(x_db, tag, test_size=0.2)
 
@@ -89,34 +96,50 @@ def predict_func(x_db, test=True):
         y = y_train
 
     # create predictions of which are the correct sentences
+    np.random.seed(2)
     predicted_results = clf.predict(x)
 
-    y = y.to_numpy()
-    x = x.to_numpy()
+    goal_lables = y.to_numpy()
+    train_db = x.to_numpy()
+    check_prediction(predicted_results, goal_lables, train_db)
 
-    fpr, tpr, thresholds = metrics.roc_curve(y, predicted_results, pos_label=1)
+    last_file = 0
+    for i in range(len(predicted_results)):
+        if predicted_results[i] == 1:
+            pass
 
+
+
+
+
+def check_prediction(predicted_results, goal_lables, train_db):
     count_ones = 0
     count_same = 0
     for i in range(len(predicted_results)):
-        if predicted_results[i] == y[i]:
+        if predicted_results[i] == goal_lables[i]:
             count_same += 1
             if predicted_results[i] == 1:
-                print(db_filtered.sentence[x[i][1]])
+                print(db_filtered.sentence[train_db[i][1]])
                 count_ones += 1
-    print("how many ones in train:", sum(y))
+    print("how many ones in train:", sum(goal_lables))
     print("how many ones predicted: ", sum(predicted_results))
     print("accuracy overall: ", count_same/len(predicted_results))
-    print("accuracy of ones: ", count_ones/sum(y))
+    print("accuracy of ones: ", count_ones/sum(goal_lables))
+
+    fpr, tpr, thresholds = metrics.roc_curve(goal_lables, predicted_results, pos_label=1)
     print("AUC VALUE =", metrics.auc(fpr, tpr))
+
     # metrics.plot_roc_curve(clf, x, y)
     # plt.show()
-    one_hot_encoding(predicted_results, x, y, db_filtered)
+    # one_hot_encoding(predicted_results, x, y, db_filtered)
 
 
 ##Test Train##
 # evaluates predictions
-predict_func(x_db)
+train_and_predict_func(x_db)
 
 
 ## Post Train - single verdict ##
+
+
+
