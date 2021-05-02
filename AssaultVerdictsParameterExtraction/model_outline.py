@@ -78,19 +78,18 @@ def remove_strings (db):
     return db
 
 ##Train##
-def train_and_predict_func(x_db, test=True):
+
+def train_and_predict_func(x_db, weight, test=True):
     x_db = remove_strings(x_db)
 
     np.random.seed(42)
 
     x_train, x_test, y_train, y_test = train_test_split(x_db, tag, test_size=0.2, random_state=42)
 
-    weights = (y_train.to_numpy() * 500) + 1
+    weights = (y_train.to_numpy() * weight) + 1
 
-    clf = SVC()#kernel='linear', C=100)
+    clf = SVC()#kernel='linear')#, C=100)
     clf.fit(x_train, y_train, sample_weight=weights)
-
-    # weights_graphed(clf.coef_, x_train)
 
     if test:
         x = x_test
@@ -105,6 +104,7 @@ def train_and_predict_func(x_db, test=True):
     goal_labels = y.to_numpy()
     train_db = x.to_numpy()
     check_prediction(predicted_results, goal_labels, train_db)
+    # weights_graphed(clf.coef_, x_train)
 
     ones = smaller_sentence_pool(predicted_results, train_db, db_filtered)
     # last_file = 0
@@ -126,10 +126,11 @@ def check_prediction(predicted_results, goal_labels, train_db):
             if predicted_results[i] == 1:
                 # print(db_filtered.sentence[train_db[i][1]])
                 count_ones += 1
+    print("sample size: ", len(goal_labels))
     print("how many ones expected:", sum(goal_labels))
     print("how many ones predicted: ", sum(predicted_results))
-    print("accuracy overall: ", count_same/len(predicted_results))
-    print("accuracy of ones: ", count_ones/sum(goal_labels))
+    print("Precision: ", count_same/len(predicted_results))
+    print("Recall: ", count_ones/sum(goal_labels))
 
     # fpr, tpr, thresholds = metrics.roc_curve(goal_lables, predicted_results, pos_label=1)
     # print("AUC VALUE =", metrics.auc(fpr, tpr))
@@ -168,8 +169,8 @@ def vizualize (db):
 
 
 if __name__ == "__main__":
-    # path = "C:\\Users\\oryiz\\PycharmProjects\\PEAV\\AssaultVerdictsParameterExtraction\\final_verdicts_dir\\"
-    path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
+    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\temp_DB - feature_DB final like an election.csv"
+    # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
     # path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
     db = pandas.read_csv(path, header=0, na_values='')
     s = 'does sentence include punishment'
@@ -177,4 +178,7 @@ if __name__ == "__main__":
     x_db = db_filtered.loc[:, db_filtered.columns != 'does sentence include punishment']
     tag = db_filtered[s]
     # vizualize(db_filtered)
-    train_and_predict_func(x_db)
+    for i in range(16,20):
+        print("with weights = ", i)
+        train_and_predict_func(x_db, i )
+        print()
