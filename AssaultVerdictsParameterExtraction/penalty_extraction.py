@@ -1,6 +1,5 @@
 from bs4 import BeautifulSoup
 import urllib#.request
-import urllib3
 # import hebpipe
 import os
 import re

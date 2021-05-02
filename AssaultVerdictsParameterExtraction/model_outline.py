@@ -48,6 +48,15 @@ tag = db_filtered[TAG_COL]
 # probably should use 10 fold cross validation from this point
 # x_train, x_test, y_train, y_test = train_test_split(x_db, tag, random_state=0)
 
+def weights_graphed(coef, db):
+    imp = coef[0]
+    imp, names = zip(*sorted(zip(imp, list(db.columns.values))))
+    print(names)
+    plt.barh(range(len(names)), imp, align='center')
+    plt.yticks(range(len(names)), names)
+    plt.show()
+
+
 def smaller_sentence_pool(predicted, x, db):
     ones = pandas.DataFrame()
     for i in range(len(predicted)):
@@ -55,11 +64,11 @@ def smaller_sentence_pool(predicted, x, db):
         line = db.loc[db[SENTENCE] == sentence]
         if predicted[i] == 1:
             add = pandas.DataFrame(
-                    [[line[FILE_NAME], sentence, line[TAG_COL]]],
-                    columns=["file", "sentence", "original tag"])
+                    [[line[FILE_NAME], sentence, line[TAG_COL], predicted[i]]],
+                    columns=["file", "sentence", "original tag", "our tag"])
             ones = pandas.concat([ones, add])
+    ones.to_csv("svm_sentences.csv", encoding="utf-8")
     return ones
-    # OHEncoded.to_csv("svm_sentences.csv", encoding="utf-8")
 
 ### pre processing ###
 def remove_strings (db):
@@ -76,10 +85,12 @@ def train_and_predict_func(x_db, test=True):
 
     x_train, x_test, y_train, y_test = train_test_split(x_db, tag, test_size=0.2)
 
-    weights = (y_train.to_numpy() * 200) + 1
+    weights = (y_train.to_numpy() * 500) + 1
 
-    clf = SVC()
+    clf = SVC(kernel='linear', C=100)
     clf.fit(x_train, y_train, sample_weight=weights)
+
+    weights_graphed(clf.coef_, x_train)
 
     if test:
         x = x_test
@@ -92,34 +103,34 @@ def train_and_predict_func(x_db, test=True):
     # np.random.seed(2)
     predicted_results = clf.predict(x)
 
-    goal_lables = y.to_numpy()
+    goal_labels = y.to_numpy()
     train_db = x.to_numpy()
-    check_prediction(predicted_results, goal_lables, train_db)
+    check_prediction(predicted_results, goal_labels, train_db)
 
-    ones = smaller_sentence_pool(predicted_results, train_db, db)
-    last_file = 0
-    count = 0
-    for line in ones:
-        if line[0] != last_file:
-            if line[2] == 1:
-                count += 1
-        last_file = line[0]
-    print("Last sentence in file after SVM accuracy = ", count/sum(y))
+    ones = smaller_sentence_pool(predicted_results, train_db, db_filtered)
+    # last_file = 0
+    # count = 0
+    # for line in ones:
+    #     if line[0] != last_file:
+    #         if line[2] == 1:
+    #             count += 1
+    #     last_file = line[0]
+    # print("Last sentence in file after SVM accuracy = ", count/sum(y))
 
 
-def check_prediction(predicted_results, goal_lables, train_db):
+def check_prediction(predicted_results, goal_labels, train_db):
     count_ones = 0
     count_same = 0
     for i in range(len(predicted_results)):
-        if predicted_results[i] == goal_lables[i]:
+        if predicted_results[i] == goal_labels[i]:
             count_same += 1
             if predicted_results[i] == 1:
-                # print(db_filtered.sentence[train_db[i][1]])
+                print(db_filtered.sentence[train_db[i][1]])
                 count_ones += 1
-    print("how many ones in train:", sum(goal_lables))
+    print("how many ones expected:", sum(goal_labels))
     print("how many ones predicted: ", sum(predicted_results))
     print("accuracy overall: ", count_same/len(predicted_results))
-    print("accuracy of ones: ", count_ones/sum(goal_lables))
+    print("accuracy of ones: ", count_ones/sum(goal_labels))
 
     # fpr, tpr, thresholds = metrics.roc_curve(goal_lables, predicted_results, pos_label=1)
     # print("AUC VALUE =", metrics.auc(fpr, tpr))
