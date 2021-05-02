@@ -129,11 +129,6 @@ def check_prediction(predicted_results, goal_lables, train_db):
     # one_hot_encoding(predicted_results, x, y, db_filtered)
 
 
-##Test Train##
-# evaluates predictions
-train_and_predict_func(x_db)
-
-
 #### visualization ####
 def vizualize (db):
     db = remove_strings(db)
