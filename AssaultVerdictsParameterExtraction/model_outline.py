@@ -60,7 +60,9 @@ def weights_graphed(coef, db):
 def smaller_sentence_pool(predicted, tag, x, db):
     ones = pd.DataFrame()
     for i in range(len(predicted)):
-        sentence = db.sentence[x[i][1]]
+        # sentence = db.sentence[x[i][1]]
+        sentence = db.sentence[x.index[i]]
+        print(sentence)
         line = db.loc[db[SENTENCE] == sentence]
         if predicted[i] == 1:
             add = pd.DataFrame(
@@ -72,21 +74,23 @@ def smaller_sentence_pool(predicted, tag, x, db):
 
 ### pre processing ###
 def remove_strings (db):
-    db = db.replace(db[SENTENCE].tolist(), db_filtered.index.tolist())  # This is the line that replaces sentences
-                                                                              # with indx.
+    db = db.replace(db[SENTENCE].tolist(), db.index.tolist())  # This is the line that replaces sentences
+    # db.insert(0,"new col", db.index.tolist() )                                                              # with indx.
+    db.set_index(np.arange(len(db[SENTENCE])))                                                              # with indx.
     le = LabelEncoder()
     file_name_dict = le.fit(db[FILE_NAME])
     db[FILE_NAME] = file_name_dict.fit_transform(db[FILE_NAME])
+
     return db
 
 ##Train##
 
-def train_and_predict_func(x_db, tag, weight, test=True):
+def train_and_predict_func(x_db, tag, weight, df,test=True):
     x_db = remove_strings(x_db)
 
     np.random.seed(42)
-
-    x_train, x_test, y_train, y_test = train_test_split(x_db, tag, shuffle= False,test_size=0.2, random_state=42)
+    temp_db = x_db.loc[:, x_db.columns != SENTENCE]
+    x_train, x_test, y_train, y_test = train_test_split(temp_db, tag, shuffle= False,test_size=0.2, random_state=42)
 
     weights = (y_train.to_numpy() * weight) + 1
 
@@ -105,7 +109,7 @@ def train_and_predict_func(x_db, tag, weight, test=True):
 
     goal_labels = y.to_numpy()
     train_db = x.to_numpy()
-    check_prediction(predicted_results, goal_labels, train_db)
+    check_prediction(predicted_results, goal_labels, train_db, df)
     # weights_graphed(clf.coef_, x_train)
 
     ones = smaller_sentence_pool(predicted_results, TAG_PROB,train_db, db_filtered)
@@ -119,17 +123,21 @@ def train_and_predict_func(x_db, tag, weight, test=True):
     # print("Last sentence in file after SVM accuracy = ", count/sum(y))
 
 
-def check_prediction(predicted_results, goal_labels, train_db):
+def check_prediction(predicted_results, goal_labels, train_db, df):
     count_ones = 0
     count_same = 0
     for i in range(len(predicted_results)):
+        if goal_labels[i] == 1:
+            print("break point")
         if predicted_results[i] == goal_labels[i]:
             count_same += 1
             if predicted_results[i] == 1:
-                print(db_filtered.sentence[train_db[i][1]])
+                print(df.index[i])
+                print(df.sentence[train_db[i][1]])
+                print(df[TAG_PROB][train_db[i][1]],"and goals = ", goal_labels[i])
                 count_ones += 1
         elif goal_labels[i] == 1:
-            print(db_filtered.sentence[train_db[i][1]])
+            print(df.sentence[train_db[i][1]])
     print("sample size: ", len(goal_labels))
     print("how many ones expected:", sum(goal_labels))
     print("how many ones predicted: ", sum(predicted_results))
@@ -190,7 +198,7 @@ if __name__ == "__main__":
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
     # path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
     db = pd.read_csv(path, header=0, na_values='')
-    s = 'does sentence include punishment'
+    # s = 'does sentence include punishment'
     # db_filtered = db[(db[s] == 1) | (db[s] == 0)]
     db_filtered = db
     x_db = db_filtered.loc[:, db_filtered.columns != TAG_COL]
@@ -200,5 +208,5 @@ if __name__ == "__main__":
     # vizualize(db_filtered)
     for i in range(16,20): #17 works good for actual
         print("with weights = ", i)
-        train_and_predict_func(x_db,tag, i )
+        train_and_predict_func(x_db,tag, i, db_filtered )
         print()
