@@ -16,7 +16,7 @@ HEB_WORDS_TO_EXTRACT = ['עו*תרה*(ים)*(ות)*','ה*תובעת*','ביקש�
                         'תועלת', 'נאשם', 'קנס'] + pe.TIME_UNITS_ARR
 
 for word in HEB_WORDS_TO_EXTRACT:
-    COL_HEB_NAMES.extend(["first " + word, "first " + word + " ratio", "last " + word, "last " + word + " ratio",
+    COL_HEB_NAMES.extend(["first " + word, "first " + word + " ratio", "last " + word, "last " + word + " ratio", "did " +word+ " appear",
                          word + " count"])
 
 for col in pe.CLAUSES:
@@ -33,7 +33,16 @@ def extract_important_words(sentence, words):
                                 -1 if length == 0 else indices[0]/len(sentence),
                                 -1 if length == 0 else indices[-1],
                                 -1 if length == 0 else indices[-1]/len(sentence),
+                                -1 if length == 0 else 1,
                                 length])
+        # else:
+            # list_of_indices.append([ #indices[0],
+            #                          indices[0]/len(sentence),
+            #                          # 0,
+            #                          0,
+            #                          1,
+            #                          length
+            #                         ])
     return list_of_indices
 
 
@@ -78,8 +87,11 @@ def extract(directory, running_opt):
     return featureDB
 
 
-path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/final_verdicts_dir/"
-extract(path, 0)
+if __name__ == "__main__":
+    # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/final_verdicts_dir/"
+    path = r"D:/PEAV/AssaultVerdictsParameterExtraction/final_verdicts_dir/"
+
+    extract(path, 0)
 
 
 
