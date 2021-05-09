@@ -14,6 +14,7 @@ import seaborn as sns
 SENTENCE = "sentence"
 FILE_NAME = "filename"
 TAG_COL = "does sentence include punishment"
+TAG_PROB = 'probation'
 # path = 'verdicts'
 
 ## TRAIN ## - This is done only on our labled dataset
@@ -56,14 +57,14 @@ def weights_graphed(coef, db):
     plt.show()
 
 
-def smaller_sentence_pool(predicted, x, db):
+def smaller_sentence_pool(predicted, tag, x, db):
     ones = pd.DataFrame()
     for i in range(len(predicted)):
         sentence = db.sentence[x[i][1]]
         line = db.loc[db[SENTENCE] == sentence]
         if predicted[i] == 1:
             add = pd.DataFrame(
-                    [[line[FILE_NAME], sentence, line[TAG_COL], predicted[i]]],
+                    [[line[FILE_NAME], sentence, line[tag], predicted[i]]],
                     columns=["file", "sentence", "original tag", "our tag"])
             ones = pd.concat([ones, add])
     ones.to_csv("svm_sentences.csv", encoding="utf-8")
@@ -89,7 +90,7 @@ def train_and_predict_func(x_db, tag, weight, test=True):
 
     weights = (y_train.to_numpy() * weight) + 1
 
-    clf = SVC(kernel='linear')#, C=100)
+    clf = SVC()#kernel='linear')#, C=100)
     clf.fit(x_train, y_train, sample_weight=weights)
 
     if test:
@@ -107,7 +108,7 @@ def train_and_predict_func(x_db, tag, weight, test=True):
     check_prediction(predicted_results, goal_labels, train_db)
     # weights_graphed(clf.coef_, x_train)
 
-    ones = smaller_sentence_pool(predicted_results, train_db, db_filtered)
+    ones = smaller_sentence_pool(predicted_results, TAG_PROB,train_db, db_filtered)
     # last_file = 0
     # count = 0
     # for line in ones:
@@ -125,8 +126,10 @@ def check_prediction(predicted_results, goal_labels, train_db):
         if predicted_results[i] == goal_labels[i]:
             count_same += 1
             if predicted_results[i] == 1:
-                # print(db_filtered.sentence[train_db[i][1]])
+                print(db_filtered.sentence[train_db[i][1]])
                 count_ones += 1
+        elif goal_labels[i] == 1:
+            print(db_filtered.sentence[train_db[i][1]])
     print("sample size: ", len(goal_labels))
     print("how many ones expected:", sum(goal_labels))
     print("how many ones predicted: ", sum(predicted_results))
@@ -190,12 +193,12 @@ if __name__ == "__main__":
     s = 'does sentence include punishment'
     # db_filtered = db[(db[s] == 1) | (db[s] == 0)]
     db_filtered = db
-    x_db = db_filtered.loc[:, db_filtered.columns != 'does sentence include punishment']
-    x_db = x_db.loc[:, x_db.columns != 'probation']
-    tag = db_filtered[s]
+    x_db = db_filtered.loc[:, db_filtered.columns != TAG_COL]
+    x_db = x_db.loc[:, x_db.columns != TAG_PROB]
+    tag = db_filtered[TAG_PROB]
     # compute_PCA(db_filtered)
     # vizualize(db_filtered)
-    for i in range(5000,6000,100):
+    for i in range(16,20): #17 works good for actual
         print("with weights = ", i)
         train_and_predict_func(x_db,tag, i )
         print()
