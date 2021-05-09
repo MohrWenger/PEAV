@@ -4,11 +4,12 @@ from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
 from sklearn import metrics
 from sklearn.feature_extraction import DictVectorizer
-import pandas
+import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
+from sklearn.decomposition import SparsePCA
 import seaborn as sns
 SENTENCE = "sentence"
 FILE_NAME = "filename"
@@ -56,15 +57,15 @@ def weights_graphed(coef, db):
 
 
 def smaller_sentence_pool(predicted, x, db):
-    ones = pandas.DataFrame()
+    ones = pd.DataFrame()
     for i in range(len(predicted)):
         sentence = db.sentence[x[i][1]]
         line = db.loc[db[SENTENCE] == sentence]
         if predicted[i] == 1:
-            add = pandas.DataFrame(
+            add = pd.DataFrame(
                     [[line[FILE_NAME], sentence, line[TAG_COL], predicted[i]]],
                     columns=["file", "sentence", "original tag", "our tag"])
-            ones = pandas.concat([ones, add])
+            ones = pd.concat([ones, add])
     ones.to_csv("svm_sentences.csv", encoding="utf-8")
     return ones
 
@@ -79,16 +80,16 @@ def remove_strings (db):
 
 ##Train##
 
-def train_and_predict_func(x_db, weight, test=True):
+def train_and_predict_func(x_db, tag, weight, test=True):
     x_db = remove_strings(x_db)
 
     np.random.seed(42)
 
-    x_train, x_test, y_train, y_test = train_test_split(x_db, tag, test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(x_db, tag, shuffle= False,test_size=0.2, random_state=42)
 
     weights = (y_train.to_numpy() * weight) + 1
 
-    clf = SVC()#kernel='linear')#, C=100)
+    clf = SVC(kernel='linear')#, C=100)
     clf.fit(x_train, y_train, sample_weight=weights)
 
     if test:
@@ -141,6 +142,19 @@ def check_prediction(predicted_results, goal_labels, train_db):
 
 
 #### visualization ####
+def compute_PCA (db):
+    db = remove_strings(db)
+    transformer = SparsePCA(n_components=2, random_state=0)
+    res = transformer.fit_transform(db)
+    df = pd.DataFrame()
+    df["y"] = db[TAG_COL]
+    df["comp-1"] = res[:, 0]
+    df["comp-2"] = res[:, 1]
+    sns.scatterplot(x="comp-1", y="comp-2", hue=df.y.tolist(),
+                palette=sns.color_palette("hls", 2),
+                data=df).set(title="Iris data SparsePCA projection")
+    plt.show()
+
 def vizualize (db):
     db = remove_strings(db)
     # correct = db.loc[db[TAG_COL] == 1]
@@ -169,16 +183,19 @@ def vizualize (db):
 
 
 if __name__ == "__main__":
-    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\temp_DB - feature_DB final like an election.csv"
+    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\DB of 9.5 - feature_DB.csv"
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
     # path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
-    db = pandas.read_csv(path, header=0, na_values='')
+    db = pd.read_csv(path, header=0, na_values='')
     s = 'does sentence include punishment'
-    db_filtered = db[(db[s] == 1) | (db[s] == 0)]
+    # db_filtered = db[(db[s] == 1) | (db[s] == 0)]
+    db_filtered = db
     x_db = db_filtered.loc[:, db_filtered.columns != 'does sentence include punishment']
+    x_db = x_db.loc[:, x_db.columns != 'probation']
     tag = db_filtered[s]
+    # compute_PCA(db_filtered)
     # vizualize(db_filtered)
-    for i in range(16,20):
+    for i in range(5000,6000,100):
         print("with weights = ", i)
-        train_and_predict_func(x_db, i )
+        train_and_predict_func(x_db,tag, i )
         print()
