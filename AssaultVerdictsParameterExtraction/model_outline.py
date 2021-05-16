@@ -2,7 +2,7 @@
 # import AssaultVerdictsParameterExtraction.validate
 from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
-from sklearn import metrics
+from sklearn.metrics import f1_score
 from sklearn.feature_extraction import DictVectorizer
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
@@ -61,17 +61,22 @@ def smaller_sentence_pool(predicted, tag_name,original_indices, db):
     ones = pd.DataFrame()
     for i in range(len(predicted)):
         # sentence = db.sentence[x[i][1]]
-        sentence = db.sentence[original_indices[i]]
-        # print(sentence)
-        # line = db.loc[db[SENTENCE] == sentence]
-        line = db.iloc[original_indices[i]]
-        if predicted[i] == 1:
-            add = pd.DataFrame(
-                    [[line[FILE_NAME], sentence, line[tag_name], predicted[i]]],
-                    columns=["file", "sentence", "original tag", "our tag"])
-            ones = pd.concat([ones, add])
+        ones = add_line(ones, original_indices[i], tag_name, predicted[i],db)
     ones.to_csv("svm_sentences.csv", encoding="utf-8")
     return ones
+
+def add_line (new_db,line, tag_name,prediction, db ):
+        sentence = db.sentence[line]
+        # print(sentence)
+        # line = db.loc[db[SENTENCE] == sentence]
+        line = db.iloc[line]
+        if prediction == 1:
+            add = pd.DataFrame(
+                    [[line[FILE_NAME], sentence, line[tag_name], prediction]],
+                    columns=["file", "sentence", "original tag", "our tag"])
+            new_db = pd.concat([new_db, add])
+        return new_db
+
 
 ### pre processing ###
 def remove_strings (db):
@@ -91,7 +96,7 @@ def train_and_predict_func(x_db, tag, tag_name, weight, df,test=True):
 
     np.random.seed(42)
     temp_db = x_db.loc[:, x_db.columns != SENTENCE]
-    x_train, x_test, y_train, y_test = train_test_split(temp_db, tag, shuffle= True,test_size=0.2, random_state=42)
+    x_train, x_test, y_train, y_test = train_test_split(temp_db, tag, shuffle=False, test_size=0.2, random_state=42)
 
     weights = (y_train.to_numpy() * weight) + 1
 
@@ -111,40 +116,61 @@ def train_and_predict_func(x_db, tag, tag_name, weight, df,test=True):
     goal_labels = y.to_numpy()
     # X = x.to_numpy()
     original_indices = x.index.to_numpy()
-    check_prediction(predicted_results, goal_labels, tag_name,original_indices, df)
+    check_prediction(predicted_results, goal_labels, weight, tag_name,original_indices, df)
     # weights_graphed(clf.coef_, x_train)
 
     ones = smaller_sentence_pool(predicted_results, tag_name,original_indices, df)
-    # last_file = 0
-    # count = 0
-    # for line in ones:
-    #     if line[0] != last_file:
-    #         if line[2] == 1:
-    #             count += 1
-    #     last_file = line[0]
-    # print("Last sentence in file after SVM accuracy = ", count/sum(y))
+    last_file = 0
+    last_file_line = np.zeros((2,4))
+    count = 0
+    for line in ones.iterrows(): #iterate through the subset of sentences the machine tagged as 1
+        if line[1][0] != last_file: # new file
+            if last_file_line[1][2] == 1: # check if last sentence was a manually tagged as one
+                count += 1
+        last_file_line = line
+        last_file = line[1][0]
+    ones.to_csv("svm_sentences.csv", encoding="utf-8")
 
+    print("Amount of correct sentences in df = ", sum(ones['original tag']), ", amount predicted if taking last = ", count)
+    print("Last sentence in file after SVM accuracy = ", count/sum(y))
 
-def check_prediction(predicted_results, goal_labels, tag_name ,X, df):
-    count_ones = 0
+def calc_F1 (true_positive, true_negative, false_negative, false_positive):
+    return true_positive/(true_positive+0.5*(false_positive+false_negative))
+
+def check_prediction(predicted_results, goal_labels, weights,tag_name ,X, df):
     count_same = 0
+    true_positive = 0
+    true_negative = 0
+    false_negative = 0
+    false_positive = 0
+    ones = pd.DataFrame()
     for i in range(len(predicted_results)):
-        # if goal_labels[i] == 1:
-        #     print("break point")
         if predicted_results[i] == goal_labels[i]:
             count_same += 1
             if predicted_results[i] == 1:
+                true_positive += 1
+                ones = add_line(ones, X[i], tag_name, predicted_results[i], df)
+
                 # print(X[i])
                 # print(df.sentence[X[i]])
-                print(df[tag_name][X[i]], "and goals = ", goal_labels[i])
-                count_ones += 1
+                # print(df[tag_name][X[i]], "and goals = ", goal_labels[i])
+
+            elif predicted_results[i] == 0:
+                true_negative += 1
+
         elif goal_labels[i] == 1:
-            print(df.sentence[X[i]])
+                false_negative +=1
+        else:
+            false_positive += 1
+            ones = add_line(ones, X[i], tag_name, predicted_results[i], df)
+
+            # print(df.sentence[X[i]])
     print("sample size: ", len(goal_labels))
     print("how many ones expected:", sum(goal_labels))
     print("how many ones predicted: ", sum(predicted_results))
-    print("Precision: ", count_same/len(predicted_results))
-    print("Recall: ", count_ones/sum(goal_labels))
+    print("Precision: ", (true_positive*weights)/(true_positive*weights + false_positive))
+    print("Recall: ", true_positive/sum(goal_labels))
+    print("F1 score = ", calc_F1(true_positive*weights, true_negative, false_negative*weights, false_positive))
 
     # fpr, tpr, thresholds = metrics.roc_curve(goal_lables, predicted_results, pos_label=1)
     # print("AUC VALUE =", metrics.auc(fpr, tpr))
@@ -204,11 +230,11 @@ if __name__ == "__main__":
     # db_filtered = db[(db[s] == 1) | (db[s] == 0)]
     db_filtered = db_initial
     x_db = db_filtered.loc[:, db_filtered.columns != TAG_COL]
-    x_db = x_db.loc[:, x_db.columns != TAG_PROB]
-    tag = db_filtered[TAG_PROB]
+    x_db = x_db.loc[:, x_db.columns != TAG_COL]
+    tag = db_filtered[TAG_COL]
     # compute_PCA(db_filtered)
     # vizualize(db_filtered)
     for i in range(17,30): #17 works good for actual
         print("with weights = ", i)
-        train_and_predict_func(x_db,tag, TAG_PROB,i, db_filtered )
+        train_and_predict_func(x_db,tag, TAG_COL,i, db_filtered )
         print()
