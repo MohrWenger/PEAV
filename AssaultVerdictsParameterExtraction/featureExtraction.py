@@ -17,11 +17,14 @@ HEB_WORDS_TO_EXTRACT = ['עו*תרה*(ים)*(ות)*','ה*תובעת*','ביקש�
 
 for word in HEB_WORDS_TO_EXTRACT:
     COL_HEB_NAMES.extend(["first " + word, "first " + word + " ratio", "last " + word, "last " + word + " ratio", "did " +word+ " appear",
-                         word + " count"])
+                          word + " count"])
 
 for col in pe.CLAUSES:
     COL_CLAUSES.append(["first " + col, "first " + col + " ratio", "last " + col, "last " + col + " ratio",
-                         col + " count"])
+                        col + " count"])
+
+SYNTAX_NAMES = ["NN", "VB", "PREPOSITION", "DEF", "NNP", "NNT", "BN", "POS", "S_PRN", "CD", "RB", "PRP",
+                "IN", "AT", "DTT", "yyCM", "CONJ", "JJ", "COP", "REL", "NCD", "yyDOT", "gen=M", "gen=F"]
 
 
 def extract_important_words(sentence, words):
@@ -36,14 +39,26 @@ def extract_important_words(sentence, words):
                                 -1 if length == 0 else 1,
                                 length])
         # else:
-            # list_of_indices.append([ #indices[0],
-            #                          indices[0]/len(sentence),
-            #                          # 0,
-            #                          0,
-            #                          1,
-            #                          length
-            #                         ])
+        # list_of_indices.append([ #indices[0],
+        #                          indices[0]/len(sentence),
+        #                          # 0,
+        #                          0,
+        #                          1,
+        #                          length
+        #                         ])
     return list_of_indices
+
+
+def add_syntax_features(featureDB):
+    txt = open('output.conll', 'r').read()
+    i_next = 0
+    for name in SYNTAX_NAMES:
+        i_prev = i_next
+        i_next = txt[i_prev:].find("1")
+        for i in range(len(featureDB)):
+            featureDB[name][i] = len(re.findall(name, txt[i_prev:i_next]))
+    return featureDB
+
 
 
 def operating_func(filename, featureDB):
@@ -57,11 +72,11 @@ def operating_func(filename, featureDB):
         sentence_line = pd.DataFrame(
             [[filename, sentences[i], len_sentences[i], sentence_allfile_count, sent_num[i],
               sent_num[i]/sentence_allfile_count] +
-             [j for i in important_words_list for j in i]],
+             [j for i in important_words_list for j in i] + [0] * len(SYNTAX_NAMES)],
             columns=["filename", "sentence", "length sentence", "total sentences", "sentence num", "ratio in file"]
-                    + COL_HEB_NAMES)
+                    + COL_HEB_NAMES + SYNTAX_NAMES)
         featureDB = pd.concat([featureDB, sentence_line])
-    return featureDB
+    return add_syntax_features(featureDB)
 
 
 def extract(directory, running_opt):
@@ -89,7 +104,7 @@ def extract(directory, running_opt):
 
 if __name__ == "__main__":
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/final_verdicts_dir/"
-    path = r"D:/PEAV/AssaultVerdictsParameterExtraction/final_verdicts_dir/"
+    path = r"final_verdicts_dir/"
 
     extract(path, 0)
 

@@ -1,4 +1,4 @@
-import torch
+# import torch
 
 def neg_log_likelihood(self, rolls, states):
     """Compute neg log-likelihood for a given sequence.
@@ -123,4 +123,19 @@ def _viterbi_algorithm(self, loglikelihoods):
 
 
 if __name__ == "__main__":
-    _viterbi_algorithm()
+    # from csv import reader
+    # import re
+    # output = open("/cs/usr/tomka/PycharmProjects/yapproj/src/yap/input.txt", "w")
+    # with open('DB of 16.5 - Sheet1.csv', 'r') as read_obj:
+    #     csv_reader = reader(read_obj)
+    #     list_of_rows = list(csv_reader)
+    #     for row in list_of_rows:
+    #         sentence = row[2]
+    #         sep_sen = re.findall(r"[\w']+|[.,!?;-]", sentence)
+    #         text = "\n".join(sep_sen)
+    #         output.write(text + "\n\n")
+    # output.close()
+    #
+
+
+
