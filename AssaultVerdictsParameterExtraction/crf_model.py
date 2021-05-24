@@ -12,11 +12,44 @@ SENTENCE = "sentence"
 FILE_NAME = "filename"
 
 
-def create_as_dict(df):
-    as_dict = []
+def arrange_for_crf(df,labels): #NOTICE - this assumes no shuffle in the data
+    sent_in_file_dict = []
+    all_files_lists = []
+    prev_file_name = -1
+    prev_row = {}
+    sent_labels_lst = []
+    all_labels_lst = []
+    is_BOS = False
     for k, row in df.iterrows():
-        as_dict.append([dict(**row)])
-    return as_dict
+        if k == 0:
+            prev_row = row
+            # sent_labels_lst.append(str(labels[k]))
+
+        else:
+            prev_row_dict = dict(**prev_row)  # each time we want to update the previous row.
+            if is_BOS:  # This happens if the previous line was the last in the file.
+                prev_row_dict['BOS'] = True
+                is_BOS = False
+
+            if prev_file_name != row[FILE_NAME] or k == df.shape[1]:  # if the next line file name is not the same then this row is the EOS.
+                prev_file_name = row[FILE_NAME]  # update that we are in a new file
+                prev_row_dict['EOS'] = True
+                sent_in_file_dict.append(prev_row_dict)  # adding the dict of the last sentence
+                sent_labels_lst.append(str(labels[k]))
+                is_BOS = True
+                all_files_lists.append(sent_in_file_dict)  # add the list of all dicts to the big list
+                all_labels_lst.append(sent_labels_lst)  # add the labels to the big list
+
+                sent_in_file_dict = []  # initialize both lists
+                sent_labels_lst = []
+
+            else:  # for rows that are either first or last
+                sent_in_file_dict.append(prev_row_dict)
+                sent_labels_lst.append(str(labels[k]))
+
+            prev_row = row #update prev row
+
+    return all_files_lists, all_labels_lst
 
 
 def remove_strings (db):
@@ -47,9 +80,8 @@ def using_crfsuite(x_db, tag, tag_name, df, test = True):
 
     np.random.seed(42)
     temp_db = x_db.loc[:, x_db.columns != SENTENCE]
-    x_train, x_test, y_train, y_test = train_test_split(temp_db, tag, shuffle=True, test_size=0.2, random_state=42)
-    x_train_dict = create_as_dict(x_train)
-    y_train = [[str(x)] for x in y_train]
+    x_train, x_test, y_train, y_test = train_test_split(temp_db, tag, shuffle=False, test_size=0.2, random_state=42)
+    x_train_dict, y_train_lst = arrange_for_crf(x_train, y_train)
 
     crf = sklearn_crfsuite.CRF(
         algorithm='lbfgs',
@@ -59,15 +91,15 @@ def using_crfsuite(x_db, tag, tag_name, df, test = True):
         all_possible_transitions=True
     )
     print(len(x_train_dict))
-    print(len(y_train))
-    crf.fit(x_train_dict, y_train)
+    print(len(y_train_lst))
+    crf.fit(x_train_dict, y_train_lst)
 
     if test:
         x = x_test
         y = y_test
     else:
         x = x_train
-        y = y_train
+        y = y_train_lst
 
     # create predictions of which are the correct sentences
     predicted_results = crf.predict(x)
@@ -106,9 +138,9 @@ def check_prediction(predicted_results, goal_labels,tag_name ,X, df):
     print("sample size: ", len(goal_labels))
     print("how many ones expected:", sum(goal_labels))
     print("how many ones predicted: ", sum(predicted_results))
-    print("Precision: ", (true_positive)/(true_positive + false_positive))
+    print("Precision: ", (true_positive*weights)/(true_positive*weights + false_positive))
     print("Recall: ", true_positive/sum(goal_labels))
-    print("F1 score = ", calc_F1(true_positive, true_negative, false_negative*weights, false_positive))
+    print("F1 score = ", calc_F1(true_positive*weights, true_negative, false_negative*weights, false_positive))
 
 def calc_F1 (true_positive, true_negative, false_negative, false_positive):
     return true_positive/(true_positive+0.5*(false_positive+false_negative))
