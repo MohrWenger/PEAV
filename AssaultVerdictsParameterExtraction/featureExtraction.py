@@ -13,11 +13,11 @@ HEB_WORDS_TO_EXTRACT = ['עו*תרה*(ים)*(ות)*','ה*תובעת*','ביקש�
                         'בין','מתחם','יפחת','יעלה','נגזר','נדון','ה*צדדים',"\"","/",r"\\",":",'גוזרת*(ים)*(ות)*',
                         '[נמ]טילה*(ים)*(ות)*',' ד[(נה)(ן)(נים)(נות)]','משיתה*','מחליטה*(ים)*(ות)*','לגזור','להטיל',
                         'יי*מצא מתאים', 'מאסר', 'עונשין', 'שירות', 'תנאי', 'יעבור', 'עבודות', 'צו', 'קהיל[הת]י?', 'ציבור',
-                        'תועלת', 'נאשם', 'קנס'] + pe.TIME_UNITS_ARR
+                        'תועלת', 'נאשם', 'קנס', 'מאשי[(מה)(ם)]','תסקיר','המלי[(ץ)(צה)]'] + pe.TIME_UNITS_ARR
 
 for word in HEB_WORDS_TO_EXTRACT:
-    COL_HEB_NAMES.extend(["first " + word, "first " + word + " ratio", "last " + word, "last " + word + " ratio", "did " +word+ " appear",
-                         word + " count"])
+    COL_HEB_NAMES.extend(["first " + word, "first " + word + " ratio", "last " + word, "last " + word + " ratio",
+                          "did " +word+ " appear", word + " count"])
 
 for col in pe.CLAUSES:
     COL_CLAUSES.append(["first " + col, "first " + col + " ratio", "last " + col, "last " + col + " ratio",
@@ -29,22 +29,34 @@ def extract_important_words(sentence, words):
     for word in words:
         indices = [index.start() for index in re.finditer(word, sentence)]
         length = len(indices)
-        list_of_indices.append([-1 if length == 0 else indices[0],
-                                -1 if length == 0 else indices[0]/len(sentence),
-                                -1 if length == 0 else indices[-1],
-                                -1 if length == 0 else indices[-1]/len(sentence),
-                                -1 if length == 0 else 1,
-                                length])
-        # else:
-            # list_of_indices.append([ #indices[0],
-            #                          indices[0]/len(sentence),
-            #                          # 0,
-            #                          0,
-            #                          1,
-            #                          length
-            #                         ])
+        if length != 1:
+            list_of_indices.append([-1 if length == 0 else indices[0],
+                                    0 if length == 0 else indices[0]/len(sentence),
+                                    -1 if length == 0 else indices[-1],
+                                    0 if length == 0 else indices[-1]/len(sentence),
+                                    -1 if length == 0 else 1,
+                                    length])
+        else:
+            list_of_indices.append([ indices[0],
+                                     indices[0]/len(sentence),
+                                     0,
+                                     0,
+                                     1,
+                                     length
+                                    ])
     return list_of_indices
 
+def does_contain_number(sentence):
+    """
+    This function returns if a sentence contains a number and the best guess for the actual time
+    :param sentence:
+    :return:
+    """
+    new_sentence = pe.numberExchange(sentence)
+    all_times, time = pe.find_time_act(new_sentence)
+    if len(all_times) == 0:
+        return -1, -1, -1
+    return len(all_times), all_times[time]*-1, time
 
 def operating_func(filename, featureDB):
     text = open(path + filename, "r", encoding="utf-8").read()
@@ -53,12 +65,15 @@ def operating_func(filename, featureDB):
     for i in range(len(sentences)):
         important_words_list = extract_important_words(sentences[i], HEB_WORDS_TO_EXTRACT)
         clauses_list = extract_important_words(sentences[i], pe.CLAUSES)
+        num_times, best_score,best_time = does_contain_number(sentences[i])
+
         # here I add values to DB
         sentence_line = pd.DataFrame(
-            [[filename, sentences[i], len_sentences[i], sentence_allfile_count, sent_num[i],
+            [[filename, sentences[i], len_sentences[i], sentence_allfile_count, sent_num[i], num_times,best_score,best_time,
               sent_num[i]/sentence_allfile_count] +
              [j for i in important_words_list for j in i]],
-            columns=["filename", "sentence", "length sentence", "total sentences", "sentence num", "ratio in file"]
+            columns=["filename", "sentence", "length sentence", "total sentences", "sentence num","time appearences",
+                     "best time score","best time", "ratio in file"]
                     + COL_HEB_NAMES)
         featureDB = pd.concat([featureDB, sentence_line])
     return featureDB
