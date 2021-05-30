@@ -183,11 +183,12 @@ def find_time_act(act_sent):
     times_and_score = {}
     min_score = 10000
     winner_time = '0'
-
+    if len(times) == 0:
+        return [], -1
     if len(times) > 2 and float(times[0]) == (float(times[1]) + float(times[2])): #A structure that returns: X1 time in total X2 actual and X3 probation
         winner_time = times[1]
 
-    elif act_sent.find("יתר") != -1:
+    elif len(times) > 2 and act_sent.find("יתר") != -1:
         winner_time = times[1]
 
     else:
@@ -312,7 +313,8 @@ def extracting_penalty_sentences(text, count_sentences=False):
             # print(sentence_count)
             # print(sentence)
             sentences.append(sentence)
-            len_sent.append(end - start)
+            len_sent.append(len(sentence.split()))
+            # len_sent.append(end - start) # by indices
             sentence_count += len(num_of_sentences_from_last)
             sent_num.append(sentence_count)
             last_dot = end

@@ -76,6 +76,7 @@ def operating_func(filename, featureDB):
     text = open(path + filename, "r", encoding="utf-8").read()
     sentence_allfile_count = len(text.split("."))
     sentences, len_sentences, sent_num = pe.extracting_penalty_sentences(text, True)
+
     for i in range(len(sentences)):
         important_words_list = extract_important_words(sentences[i], HEB_WORDS_TO_EXTRACT)
         # clauses_list = extract_important_words(sentences[i], pe.CLAUSES)

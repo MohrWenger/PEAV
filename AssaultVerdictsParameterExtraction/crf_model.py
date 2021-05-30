@@ -1,5 +1,6 @@
 import nltk
 import sklearn_crfsuite
+import sklearn_crfsuite.metrics as metrics
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -12,7 +13,7 @@ SENTENCE = "sentence"
 FILE_NAME = "filename"
 
 
-def arrange_for_crf(df,labels): #NOTICE - this assumes no shuffle in the data
+def arrange_for_crf(df,labels):  # NOTICE - this assumes no shuffle in the data
     sent_in_file_dict = []
     all_files_lists = []
     prev_file_name = -1
@@ -20,10 +21,12 @@ def arrange_for_crf(df,labels): #NOTICE - this assumes no shuffle in the data
     sent_labels_lst = []
     all_labels_lst = []
     is_BOS = False
-    for k, row in df.iterrows():
-        if k == 0:
+    counter = 0
+    for i, row in df.iterrows():
+        if counter == 0:
             prev_row = row
-            # sent_labels_lst.append(str(labels[k]))
+            prev_file_name = row[FILE_NAME]
+            # sent_labels_lst.append(str(labels[counter]))
 
         else:
             prev_row_dict = dict(**prev_row)  # each time we want to update the previous row.
@@ -31,11 +34,11 @@ def arrange_for_crf(df,labels): #NOTICE - this assumes no shuffle in the data
                 prev_row_dict['BOS'] = True
                 is_BOS = False
 
-            if prev_file_name != row[FILE_NAME] or k == df.shape[1]:  # if the next line file name is not the same then this row is the EOS.
+            if prev_file_name != row[FILE_NAME] or counter == df.shape[1]:  # if the next line file name is not the same then this row is the EOS.
                 prev_file_name = row[FILE_NAME]  # update that we are in a new file
                 prev_row_dict['EOS'] = True
                 sent_in_file_dict.append(prev_row_dict)  # adding the dict of the last sentence
-                sent_labels_lst.append(str(labels[k]))
+                sent_labels_lst.append(str(labels[i]))
                 is_BOS = True
                 all_files_lists.append(sent_in_file_dict)  # add the list of all dicts to the big list
                 all_labels_lst.append(sent_labels_lst)  # add the labels to the big list
@@ -45,10 +48,10 @@ def arrange_for_crf(df,labels): #NOTICE - this assumes no shuffle in the data
 
             else:  # for rows that are either first or last
                 sent_in_file_dict.append(prev_row_dict)
-                sent_labels_lst.append(str(labels[k]))
+                sent_labels_lst.append(str(labels[i]))
 
             prev_row = row #update prev row
-
+        counter += 1
     return all_files_lists, all_labels_lst
 
 
@@ -60,7 +63,7 @@ def remove_strings (db):
     file_name_dict = le.fit(db[FILE_NAME])
     db[FILE_NAME] = file_name_dict.fit_transform(db[FILE_NAME])
 
-    return db
+    return db, file_name_dict.classes_
 
 def add_line(new_db, line, tag_name, prediction, db):
         sentence = db.sentence[line]
@@ -76,7 +79,7 @@ def add_line(new_db, line, tag_name, prediction, db):
 
 
 def using_crfsuite(x_db, tag, tag_name, df, test = True):
-    x_db = remove_strings(x_db)
+    x_db, file_name_dict = remove_strings(x_db)
 
     np.random.seed(42)
     temp_db = x_db.loc[:, x_db.columns != SENTENCE]
@@ -84,30 +87,67 @@ def using_crfsuite(x_db, tag, tag_name, df, test = True):
     x_train_dict, y_train_lst = arrange_for_crf(x_train, y_train)
 
     crf = sklearn_crfsuite.CRF(
-        algorithm='lbfgs',
-        c1=0.1,
-        c2=0.1,
-        max_iterations=100,
-        all_possible_transitions=True
+        algorithm='pa',
+        # c1=0.1,
+        # c2=0.1,
+        # max_iterations=100,
+        # all_possible_transitions=True,
+        # all_possible_states = True
     )
     print(len(x_train_dict))
     print(len(y_train_lst))
     crf.fit(x_train_dict, y_train_lst)
 
     if test:
-        x = x_test
-        y = y_test
+        x, y = arrange_for_crf(x_test, y_test)
     else:
-        x = x_train
+        x = x_train_dict
         y = y_train_lst
 
     # create predictions of which are the correct sentences
-    predicted_results = crf.predict(x)
-    goal_labels = y.to_numpy()
-    original_indices = x.index.to_numpy()
-    check_prediction(predicted_results, goal_labels, tag_name,original_indices, df)
+    # predicted_results = crf.predict(x)
+    # goal_labels = y.to_numpy()
+    # original_indices = x.index.to_numpy()
+    labels = list(crf.classes_)
+    print("labels = ", labels)
+    y_pred = crf.predict(x)
+    for i, lab in enumerate(y):
+        lab = np.array(lab)
+        if '1' in lab:
+            correct = np.argwhere(lab == '1')[0]
+            print(y_pred[i][int(correct)])
+        else:
+            print("goal had no punisment for this one")
+    print_sent_ones(y, y_pred, x, file_name_dict, df)
+    print(metrics.flat_f1_score(y, y_pred,
+                          average='weighted', labels=labels))
+    # check_prediction(predicted_results, goal_labels, tag_name,original_indices, df)
+
+def print_sent_ones(prediction, goals, x_df, file_name_list, main_df):
+    file_names = {}
+    for i, pred in enumerate(prediction):
+        for j, l in enumerate(pred):
+            if l == '1':
+                name = x_df[i][j][FILE_NAME]
+                if name in file_names.keys():
+                    file_names[name].append(j)
+                else:
+                    file_names[name] = []
+                    file_names[name].append(j)
+
+    print(file_names)
+
+    for f_num in file_names.keys():
+        name = file_name_list[int(f_num)]
+        file_df = main_df.loc[main_df[FILE_NAME] == name]
+
+        print("\nfile: ", name)
+        for v in file_names[f_num]:
+            print(file_df.iloc[v][SENTENCE])
+    print(np.unique(file_names))
 
 def check_prediction(predicted_results, goal_labels,tag_name ,X, df):
+
     count_same = 0
     true_positive = 0
     true_negative = 0
