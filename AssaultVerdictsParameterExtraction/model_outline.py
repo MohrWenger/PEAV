@@ -10,7 +10,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from sklearn.decomposition import SparsePCA
-import seaborn as sns
+from sklearn.decomposition import PCA
+# import seaborn as sns
 SENTENCE = "sentence"
 FILE_NAME = "filename"
 TAG_COL = "does sentence include punishment"
@@ -181,18 +182,47 @@ def check_prediction(predicted_results, goal_labels, weights,tag_name ,X, df):
 
 
 #### visualization ####
-def compute_PCA (db):
-    db = remove_strings(db)
-    transformer = SparsePCA(n_components=2, random_state=0)
-    res = transformer.fit_transform(db)
-    df = pd.DataFrame()
-    df["y"] = db[TAG_COL]
-    df["comp-1"] = res[:, 0]
-    df["comp-2"] = res[:, 1]
-    sns.scatterplot(x="comp-1", y="comp-2", hue=df.y.tolist(),
-                palette=sns.color_palette("hls", 2),
-                data=df).set(title="Iris data SparsePCA projection")
+def compute_PCA(db):
+    from sklearn.preprocessing import MinMaxScaler
+    del db["filename"]
+    del db["sentence"]
+    print(db.shape)
+    scaler = MinMaxScaler()
+    data_rescaled = scaler.fit_transform(db)
+    pca = PCA().fit(data_rescaled)
+
+    import matplotlib.pyplot as plt
+    plt.rcParams["figure.figsize"] = (1804, 320)
+
+    fig, ax = plt.subplots()
+    xi = np.arange(1, 11, step=1)
+    y = np.cumsum(pca.explained_variance_ratio_)
+
+    plt.ylim(0.0,1.1)
+    plt.plot(xi, y, marker='o', linestyle='--', color='b')
+
+    plt.xlabel('Number of Components')
+    plt.xticks(np.arange(0, 11, step=1)) #change from 0-based array index to 1-based human-readable label
+    plt.ylabel('Cumulative variance (%)')
+    plt.title('The number of components needed to explain variance')
+
+    plt.axhline(y=0.95, color='r', linestyle='-')
+    plt.text(0.5, 0.85, '95% cut-off threshold', color = 'red', fontsize=16)
+
+    ax.grid(axis='x')
     plt.show()
+    #
+    # db = remove_strings(db)
+    # transformer = SparsePCA(n_components=2, random_state=0)
+    # res = transformer.fit_transform(db)
+    # df = pd.DataFrame()
+    # df["y"] = db[TAG_COL]
+    # df["comp-1"] = res[:, 0]
+    # df["comp-2"] = res[:, 1]
+    # sns.scatterplot(x="comp-1", y="comp-2", hue=df.y.tolist(),
+    #             palette=sns.color_palette("hls", 2),
+    #             data=df).set(title="Iris data SparsePCA projection")
+    # plt.show()
 
 def vizualize (db):
     db = remove_strings(db)
@@ -222,7 +252,7 @@ def vizualize (db):
 
 
 if __name__ == "__main__":
-    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\DB of 9.5 - feature_DB.csv"
+    path = r"DB of 30.5.csv"
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
     # path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
     db_initial = pd.read_csv(path, header=0, na_values='')
@@ -232,7 +262,7 @@ if __name__ == "__main__":
     x_db = db_filtered.loc[:, db_filtered.columns != TAG_COL]
     x_db = x_db.loc[:, x_db.columns != TAG_COL]
     tag = db_filtered[TAG_COL]
-    # compute_PCA(db_filtered)
+    compute_PCA(db_filtered)
     # vizualize(db_filtered)
     for i in range(17,30): #17 works good for actual
         print("with weights = ", i)

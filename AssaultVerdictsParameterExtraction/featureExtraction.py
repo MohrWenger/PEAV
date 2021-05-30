@@ -16,12 +16,12 @@ HEB_WORDS_TO_EXTRACT = ['עו*תרה*(ים)*(ות)*','ה*תובעת*','ביקש�
                         'תועלת', 'נאשם', 'קנס'] + pe.TIME_UNITS_ARR
 
 for word in HEB_WORDS_TO_EXTRACT:
-    COL_HEB_NAMES.extend(["first " + word, "first " + word + " ratio", "last " + word, "last " + word + " ratio",
-                          "did " +word+ " appear", word + " count"])
+    COL_HEB_NAMES.extend(["first " + word, "first " + word + " ratio", "last " + word, "last " + word + " ratio", "did " +word+ " appear",
+                          word + " count"])
 
 for col in pe.CLAUSES:
     COL_CLAUSES.append(["first " + col, "first " + col + " ratio", "last " + col, "last " + col + " ratio",
-                         col + " count"])
+                        col + " count"])
 
 SYNTAX_NAMES = ["NN", "VB", "PREPOSITION", "DEF", "NNP", "NNT", "BN", "POS", "S_PRN", "CD", "RB", "PRP",
                 "IN", "AT", "DTT", "yyCM", "CONJ", "JJ", "COP", "REL", "NCD", "yyDOT", "gen=M", "gen=F"]
@@ -32,43 +32,42 @@ def extract_important_words(sentence, words):
     for word in words:
         indices = [index.start() for index in re.finditer(word, sentence)]
         length = len(indices)
-        if length != 1:
-            list_of_indices.append([-1 if length == 0 else indices[0],
-                                    0 if length == 0 else indices[0]/len(sentence),
-                                    -1 if length == 0 else indices[-1],
-                                    0 if length == 0 else indices[-1]/len(sentence),
-                                    -1 if length == 0 else 1,
-                                    length])
-        else:
-            list_of_indices.append([ indices[0],
-                                     indices[0]/len(sentence),
-                                     0,
-                                     0,
-                                     1,
-                                     length
-                                    ])
+        list_of_indices.append([-1 if length == 0 else indices[0],
+                                -1 if length == 0 else indices[0]/len(sentence),
+                                -1 if length == 0 else indices[-1],
+                                -1 if length == 0 else indices[-1]/len(sentence),
+                                -1 if length == 0 else 1,
+                                length])
+        # else:
+        # list_of_indices.append([ #indices[0],
+        #                          indices[0]/len(sentence),
+        #                          # 0,
+        #                          0,
+        #                          1,
+        #                          length
+        #                         ])
     return list_of_indices
 
 def does_contain_number(sentence):
     """
-    This function returns if a sentence contains a number and the best guess for the actual time
+    This function returns if a sentence contains a number
     :param sentence:
     :return:
     """
     new_sentence = pe.numberExchange(sentence)
-    all_times, time = pe.find_time_act(new_sentence)
-    if len(all_times) == 0:
-        return -1, -1, -1
-    return len(all_times), all_times[time]*-1, time
+    return any(map(str.isdigit, new_sentence))
+
 
 def add_syntax_features(featureDB):
     txt = open('output.conll', 'r').read()
-    i_next = 0
     for name in SYNTAX_NAMES:
-        i_prev = i_next
-        i_next = txt[i_prev:].find("1")
+        i_next = 0
+        column = []
         for i in range(len(featureDB)):
-            featureDB[name][i] = len(re.findall(name, txt[i_prev:i_next]))
+            i_prev = i_next + 1
+            i_next = txt[i_prev:].find("\n1\t") + i_prev
+            column.append(len(re.findall(name, txt[i_prev:i_next])) / 2)
+        featureDB[name] = column
     return featureDB
 
 
@@ -79,22 +78,30 @@ def operating_func(filename, featureDB):
     sentences, len_sentences, sent_num = pe.extracting_penalty_sentences(text, True)
     for i in range(len(sentences)):
         important_words_list = extract_important_words(sentences[i], HEB_WORDS_TO_EXTRACT)
-        clauses_list = extract_important_words(sentences[i], pe.CLAUSES)
-        num_times, best_score,best_time = does_contain_number(sentences[i])
+        # clauses_list = extract_important_words(sentences[i], pe.CLAUSES)
+        bool_number = does_contain_number(sentences[i])
 
         # here I add values to DB
         sentence_line = pd.DataFrame(
-            [[filename, sentences[i], len_sentences[i], sentence_allfile_count, sent_num[i],
+            [[filename, sentences[i], len_sentences[i], sentence_allfile_count, sent_num[i], bool_number,
               sent_num[i]/sentence_allfile_count] +
              [j for i in important_words_list for j in i] + [0] * len(SYNTAX_NAMES)],
-            columns=["filename", "sentence", "length sentence", "total sentences", "sentence num", "ratio in file"]
-                    + COL_HEB_NAMES + SYNTAX_NAMES)
-             [j for i in important_words_list for j in i]],
-            columns=["filename", "sentence", "length sentence", "total sentences", "sentence num","time appearences",
-                     "best time score","best time", "ratio in file"]
-                    + COL_HEB_NAMES + SYNTAX_NAMES)
+            columns=["filename", "sentence", "length sentence", "total sentences", "sentence num",
+                     "does time appear", "ratio in file"] + COL_HEB_NAMES + SYNTAX_NAMES)
         featureDB = pd.concat([featureDB, sentence_line])
-    return featureDB
+    return add_syntax_features(featureDB)
+
+
+def find_best_params(featureDB):
+    import numpy as np
+    from sklearn.decomposition import PCA
+    from sklearn.preprocessing import StandardScaler
+    print(featureDB.shape)
+    print(np.mean(featureDB),np.std(featureDB))
+    pca_breast = PCA(n_components=2)
+    x = StandardScaler().fit_transform(featureDB)
+    principalComponents_breast = pca_breast.fit_transform(x)
+
 
 
 def extract(directory, running_opt):
@@ -122,8 +129,7 @@ def extract(directory, running_opt):
 
 if __name__ == "__main__":
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/final_verdicts_dir/"
-    path = r"D:/PEAV/AssaultVerdictsParameterExtraction/final_verdicts_dir/"
-
+    path = r"final_verdicts_dir/"
     extract(path, 0)
 
 

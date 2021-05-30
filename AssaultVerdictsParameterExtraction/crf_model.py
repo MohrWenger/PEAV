@@ -155,3 +155,17 @@ if __name__ == "__main__":
     x_db = x_db.loc[:, x_db.columns != TAG_COL]
     tag = db_filtered[TAG_COL]
     using_crfsuite(x_db, tag, TAG_COL, db_filtered)
+
+    # from csv import reader
+    # import re
+    # output = open("/cs/usr/tomka/PycharmProjects/yapproj/src/yap/input.txt", "w")
+    # with open('DB of 16.5 - Sheet1.csv', 'r') as read_obj:
+    #     csv_reader = reader(read_obj)
+    #     list_of_rows = list(csv_reader)
+    #     for row in list_of_rows:
+    #         sentence = row[2]
+    #         sep_sen = re.findall(r"[\w']+|[.,!?;-]", sentence)
+    #         text = "\n".join(sep_sen)
+    #         output.write(text + "\n\n")
+    # output.close()
+    #
