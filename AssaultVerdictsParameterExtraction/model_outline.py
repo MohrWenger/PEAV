@@ -11,11 +11,16 @@ import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from sklearn.decomposition import SparsePCA
 from sklearn.decomposition import PCA
+
 # import seaborn as sns
 SENTENCE = "sentence"
 FILE_NAME = "filename"
 TAG_COL = "does sentence include punishment"
 TAG_PROB = 'probation'
+NUM_APPEAR = 'does time appear'
+PROBA_VAL = "probability"
+ORIGIN_TAG = "original tag"
+PREDICTED_TAG = "our tag"
 # path = 'verdicts'
 
 ## TRAIN ## - This is done only on our labled dataset
@@ -29,7 +34,7 @@ def weights_graphed(coef, db):
     plt.show()
 
 
-def smaller_sentence_pool(predicted, tag_name,original_indices, db, probabilities):
+def smaller_sentence_pool(predicted, tag_name, original_indices, db, probabilities):
     ones = pd.DataFrame()
     for i in range(len(predicted)):
         ones = add_line(ones, original_indices[i], tag_name, predicted[i], db, probabilities[i][1])
@@ -42,26 +47,27 @@ def add_line(new_db, line, tag_name, prediction, db, probabilities):
     line = db.iloc[line]
     if prediction == 1:
         add = pd.DataFrame(
-                [[line[FILE_NAME], sentence, line[tag_name], prediction, probabilities]],
-                columns=["file", "sentence", "original tag", "our tag", "probability"])
+            [[line[FILE_NAME], sentence, line[tag_name], prediction, probabilities]],
+            columns=[FILE_NAME, SENTENCE, ORIGIN_TAG, PREDICTED_TAG, PROBA_VAL])
         new_db = pd.concat([new_db, add])
     return new_db
 
 
 ### pre processing ###
-def remove_strings (db):
+def remove_strings(db):
     # db = db.replace(db[SENTENCE].tolist(), db.index.tolist())  # This is the line that replaces sentences
     # db.insert(0,"new col", db.index.tolist() )                                                              # with indx.
-    db = db.set_index(pd.Index(np.arange(len(db[SENTENCE]))))                                                              # with indx.
+    db = db.set_index(pd.Index(np.arange(len(db[SENTENCE]))))  # with indx.
     le = LabelEncoder()
     file_name_dict = le.fit(db[FILE_NAME])
     db[FILE_NAME] = file_name_dict.fit_transform(db[FILE_NAME])
 
     return db
 
+
 ##Train##
 
-def train_and_predict_func(x_db, tag, tag_name, weight, df,test=True):
+def train_and_predict_func(x_db, tag, tag_name, weight, df, test=True):
     x_db = remove_strings(x_db)
 
     np.random.seed(42)
@@ -83,14 +89,15 @@ def train_and_predict_func(x_db, tag, tag_name, weight, df,test=True):
     # create predictions of which are the correct sentences
     predicted_results = clf.predict(x)
     probabilities = clf.predict_proba(x)
-
     goal_labels = y.to_numpy()
     # X = x.to_numpy()
     original_indices = x.index.to_numpy()
-    check_prediction(predicted_results, goal_labels, weight, tag_name,original_indices, df, probabilities)
+    check_prediction(predicted_results, goal_labels, weight, tag_name, original_indices, df, probabilities)
     # weights_graphed(clf.coef_, x_train)
 
-    ones = smaller_sentence_pool(predicted_results, tag_name,original_indices, df, probabilities)
+    ones = smaller_sentence_pool(predicted_results, tag_name, original_indices, df, probabilities)
+    apply_argmax(ones)
+
     last_file = 0
     last_file_line = np.zeros((2, 4))
     count = 0
@@ -102,12 +109,27 @@ def train_and_predict_func(x_db, tag, tag_name, weight, df,test=True):
         last_file = line[1][0]
     ones.to_csv("svm_sentences.csv", encoding="utf-8")
 
-    print("Amount of correct sentences in df = ", sum(ones['original tag']), ", amount predicted if taking last = ", count)
-    print("Last sentence in file after SVM accuracy = ", count/sum(y))
+    print("Amount of correct sentences in df = ", sum(ones['original tag']), ", amount predicted if taking last = ",
+          count)
+    print("Last sentence in file after SVM accuracy = ", count / sum(y))
 
 
-def calc_F1 (true_positive, true_negative, false_negative, false_positive):
-    return true_positive/(true_positive+0.5*(false_positive+false_negative))
+def calc_F1(true_positive, true_negative, false_negative, false_positive):
+    return true_positive / (true_positive + 0.5 * (false_positive + false_negative))
+
+def apply_argmax(ones):
+    files = np.unique(ones[FILE_NAME])
+    after_max = pd.DataFrame(columns= [SENTENCE])
+    for f in files:
+        temp = ones.loc[ones[FILE_NAME] == f]
+        #TODO - apply the actual argmax ... This is now by file names
+        max = temp[PROBA_VAL].argmax()
+        s_line = temp.iloc[max]
+        # add_line(after_max, max, ORIGIN_TAG,1,temp,PROBA_VAL)
+        after_max = after_max.append(dict(s_line), ignore_index= True)
+        # print(max)
+    after_max.to_csv("arg_max_output.csv", encoding="utf-8")
+
 
 
 def check_prediction(predicted_results, goal_labels, weights, tag_name, X, df, propabilities):
@@ -122,34 +144,35 @@ def check_prediction(predicted_results, goal_labels, weights, tag_name, X, df, p
             count_same += 1
             if predicted_results[i] == 1:
                 true_positive += 1
-                ones = add_line(ones, X[i], tag_name, predicted_results[i], df, propabilities[i][1])
+                # ones = add_line(ones, X[i], tag_name, predicted_results[i], df, propabilities[i][1])
 
             elif predicted_results[i] == 0:
                 true_negative += 1
 
         elif goal_labels[i] == 1:
-                false_negative +=1
+            false_negative += 1
         else:
             false_positive += 1
-            ones = add_line(ones, X[i], tag_name, predicted_results[i], df, propabilities[i][1])
-
-    ones = ones.sort_values(["filename", "probability"], ascending=(True, False))
-    last_file = ""
-    new_ones = pd.DataFrame()
-    for line in ones:
-        curr_file = line["filename"]
-        if
-            add = pd.DataFrame(
-                [[line[FILE_NAME], sentence, line[tag_name], prediction, probabilities]],
-                columns=["file", "sentence", "original tag", "our tag", "probability"])
-            new_db = pd.concat([new_db, add])
+            # ones = add_line(ones, X[i], tag_name, predicted_results[i], df, propabilities[i][1])
+    # TODO: FIGURE THIS LOOP OUT
+    # ones = ones.sort_values(["file", "probability"], ascending=(True, False))
+    # last_file = ""
+    # new_ones = pd.DataFrame()
+    # for line in ones:
+    #     curr_file = line["file"]
+    #     if curr_file != last_file:
+    #         add = pd.DataFrame(
+    #             [[line[FILE_NAME], line["sentence"], line[tag_name], line["probability"]]],
+    #             columns=["file", "sentence", "original tag", "probability"])
+    #         new_ones = pd.concat([new_ones, add])
+    #     last_file = curr_file
 
     print("sample size: ", len(goal_labels))
     print("how many ones expected:", sum(goal_labels))
     print("how many ones predicted: ", sum(predicted_results))
-    print("Precision: ", (true_positive*weights)/(true_positive*weights + false_positive))
-    print("Recall: ", true_positive/sum(goal_labels))
-    print("F1 score = ", calc_F1(true_positive*weights, true_negative, false_negative*weights, false_positive))
+    print("Precision: ", (true_positive * weights) / (true_positive * weights + false_positive))
+    print("Recall: ", true_positive / sum(goal_labels))
+    print("F1 score = ", calc_F1(true_positive * weights, true_negative, false_negative * weights, false_positive))
 
 
 #### visualization ####
@@ -169,16 +192,16 @@ def compute_PCA(db):
     xi = np.arange(1, 11, step=1)
     y = np.cumsum(pca.explained_variance_ratio_)
 
-    plt.ylim(0.0,1.1)
+    plt.ylim(0.0, 1.1)
     plt.plot(xi, y, marker='o', linestyle='--', color='b')
 
     plt.xlabel('Number of Components')
-    plt.xticks(np.arange(0, 11, step=1)) #change from 0-based array index to 1-based human-readable label
+    plt.xticks(np.arange(0, 11, step=1))  # change from 0-based array index to 1-based human-readable label
     plt.ylabel('Cumulative variance (%)')
     plt.title('The number of components needed to explain variance')
 
     plt.axhline(y=0.95, color='r', linestyle='-')
-    plt.text(0.5, 0.85, '95% cut-off threshold', color = 'red', fontsize=16)
+    plt.text(0.5, 0.85, '95% cut-off threshold', color='red', fontsize=16)
 
     ax.grid(axis='x')
     plt.show()
@@ -195,7 +218,8 @@ def compute_PCA(db):
     #             data=df).set(title="Iris data SparsePCA projection")
     # plt.show()
 
-def vizualize (db):
+
+def vizualize(db):
     db = remove_strings(db)
     # correct = db.loc[db[TAG_COL] == 1]
     # false_sentences = db.loc[db[TAG_COL] == 0]
@@ -219,27 +243,28 @@ def vizualize (db):
     )
     plt.savefig("tsne_try1.png")
     plt.show()
+
+
 ## Post Train - single verdict ##
 
-def remove_x_first(db):
-    files = np.unique(db[FILE_NAME])
-    for f in files:
-        temp_df = []
+def remove_irrelevant_sentences(df):
+    df = df.loc[df[NUM_APPEAR] == True]
+    return df
+
 
 if __name__ == "__main__":
     path = r"D:\PEAV\AssaultVerdictsParameterExtraction\DB of 30.5.csv"
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
     # path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
     db_initial = pd.read_csv(path, header=0, na_values='')
-    # s = 'does sentence include punishment'
-    # db_filtered = db[(db[s] == 1) | (db[s] == 0)]
     db_filtered = db_initial
+    # db_filtered = remove_irrelevant_sentences(db_initial)
     x_db = db_filtered.loc[:, db_filtered.columns != TAG_COL]
     x_db = x_db.loc[:, x_db.columns != TAG_PROB]
     tag = db_filtered[TAG_COL]
     # compute_PCA(db_filtered)
     # vizualize(db_filtered)
-    for i in range(17,30): #17 works good for actual
+    for i in range(17, 30):  # 17 works good for actual
         print("with weights = ", i)
-        train_and_predict_func(x_db,tag, TAG_COL,i, db_filtered,test=True )
+        train_and_predict_func(x_db, tag, TAG_COL, i, db_filtered, test=True)
         print()
