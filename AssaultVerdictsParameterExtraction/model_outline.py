@@ -66,26 +66,49 @@ def remove_strings(db):
 
 
 ##Train##
+def train_and_tag_from_db(db, tag_name):
+    x_db = db.loc[:, db.columns != TAG_COL]
+    x_db = x_db.loc[:, db.columns != TAG_PROB]
+    tag = db[tag_name]
+    return x_db, tag
 
-def train_and_predict_func(x_db, tag, tag_name, weight, df, test=True):
+def cross_validation(db, tag_name, weight, df, test=True):
+    all_files = np.unique(db[FILE_NAME])
+    file_num = len(all_files)
+    cross_chunks = [all_files[x:x + int(file_num/5) ] for x in range(0, file_num, int(file_num/5))]
+
+    for chunk in cross_chunks:
+        temp_train = db.loc[db[FILE_NAME] not in chunk]
+        temp_test = db.loc[db[FILE_NAME] in chunk]
+        x_db, tag = train_and_tag_from_db(temp_train, tag_name)
+
+
+        trained_model = train_func(x_db, tag, weight )
+        if test:
+            x, y = train_and_tag_from_db(temp_test)
+        else:
+            x = x_db
+            y = tag
+
+        check_prediction()
+
+def train_func(x_db, tag, weight):
     x_db = remove_strings(x_db)
 
     np.random.seed(42)
     temp_db = x_db.loc[:, x_db.columns != SENTENCE]
-    x_train, x_test, y_train, y_test = train_test_split(temp_db, tag, shuffle=True, test_size=0.2, random_state=42)
+    # x_train, x_test, y_train, y_test = train_test_split(temp_db, tag, shuffle=False, test_size=0.2, random_state=42)
+    x_train = temp_db
+    y_train = tag
 
     weights = (y_train.to_numpy() * weight) + 1
 
     clf = SVC(probability=True)  # kernel='linear')#, C=100)
     clf.fit(x_train, y_train, sample_weight=weights)
 
-    if test:
-        x = x_test
-        y = y_test
-    else:
-        x = x_train
-        y = y_train
+    return clf
 
+def evaluate_prediction(x, y, clf, weight, tag_name, df):
     # create predictions of which are the correct sentences
     predicted_results = clf.predict(x)
     probabilities = clf.predict_proba(x)
@@ -266,5 +289,5 @@ if __name__ == "__main__":
     # vizualize(db_filtered)
     for i in range(17, 30):  # 17 works good for actual
         print("with weights = ", i)
-        train_and_predict_func(x_db, tag, TAG_COL, i, db_filtered, test=True)
+        train_func(x_db, tag, TAG_COL, i, db_filtered, test=True)
         print()
