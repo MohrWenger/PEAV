@@ -100,6 +100,7 @@ def cross_validation(db, tag_name, weight, test=True, soft_max = True):
         predicted_results, probabilities = predict_svm(x, trained_model)
         goal_labels = y.to_numpy()
         original_indices = x.index.to_numpy()
+        rec, prec, f1, ones = check_prediction(predicted_results, goal_labels, weight, tag_name, original_indices, db, probabilities,with_ones= True)
         if soft_max:
             # ones = smaller_sentence_pool(predicted_results, tag_name, original_indices, db, probabilities)
             after_max = apply_argmax(ones)
@@ -107,9 +108,6 @@ def cross_validation(db, tag_name, weight, test=True, soft_max = True):
             false_negative = 15
             rec, prec,f1 = evaluate_prediction(after_max, weight,true_negative, false_negative)
             # rec, prec, f1 = check_prediction(after_max[PREDICTED_TAG], after_max[ORIGIN_TAG], weight, tag_name, original_indices, db,
-            #                                  probabilities)
-        else:
-            rec, prec, f1 = check_prediction(predicted_results, goal_labels, weight, tag_name, original_indices, db, probabilities)
 
         recalls.append(rec)
         precisions.append(prec)
@@ -174,7 +172,7 @@ def apply_argmax(ones):
 
 
 
-def check_prediction(predicted_results, goal_labels, weights, tag_name, X, df, propabilities):
+def check_prediction(predicted_results, goal_labels, weights, tag_name, X, df, propabilities,with_ones = False):
     count_same = 0
     true_positive = 0
     true_negative = 0
@@ -186,7 +184,8 @@ def check_prediction(predicted_results, goal_labels, weights, tag_name, X, df, p
             count_same += 1
             if predicted_results[i] == 1:
                 true_positive += 1
-                #ones = add_line(ones, X[i], tag_name, predicted_results[i], df, propabilities[i][1])
+                if with_ones:
+                    ones = add_line(ones, X[i], tag_name, predicted_results[i], df, propabilities[i][1])
 
             elif predicted_results[i] == 0:
                 true_negative += 1
@@ -195,17 +194,22 @@ def check_prediction(predicted_results, goal_labels, weights, tag_name, X, df, p
             false_negative += 1
         else:
             false_positive += 1
-            # ones = add_line(ones, X[i], tag_name, predicted_results[i], df, propabilities[i][1])
+            if with_ones:
+                ones = add_line(ones, X[i], tag_name, predicted_results[i], df, propabilities[i][1])
 
     recall = true_positive / sum(goal_labels)
     percision = (true_positive * weights) / (true_positive * weights + false_positive)
     f1 = calc_F1(true_positive * weights, true_negative, false_negative * weights, false_positive)
-    print("sample size: ", len(goal_labels))
-    print("how many ones expected:", sum(goal_labels))
-    print("how many ones predicted: ", sum(predicted_results))
-    print("Precision: ", percision)
-    print("Recall: ",recall)
-    print("F1 score = ", f1)
+    # print("sample size: ", len(goal_labels))
+    # print("how many ones expected:", sum(goal_labels))
+    # print("how many ones predicted: ", sum(predicted_results))
+    # print("Precision: ", percision)
+    # print("Recall: ",recall)
+    # print("F1 score = ", f1)
+
+    if with_ones:
+        ones.to_csv("ones_file.csv",encoding= 'utf-8')
+        return recall, percision, f1, ones
 
     return recall, percision, f1
 
@@ -288,7 +292,7 @@ def remove_irrelevant_sentences(df):
 
 
 if __name__ == "__main__":
-    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\DB of 30.5.csv"
+    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\DB of 30.5 - DB of 30.5.csv"
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
     # path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
     db_initial = pd.read_csv(path, header=0, na_values='')
@@ -299,4 +303,4 @@ if __name__ == "__main__":
     tag = db_filtered[TAG_COL]
     # compute_PCA(db_filtered)
     # vizualize(db_filtered)
-    cross_validation(db_filtered, TAG_COL, 18,soft_max=False )
+    cross_validation(db_filtered, TAG_COL, 18,soft_max=True )
