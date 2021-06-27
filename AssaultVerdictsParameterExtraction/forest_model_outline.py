@@ -1,6 +1,6 @@
 # from AssaultVerdictsParameterExtraction.featureExtraction import extract
 # import AssaultVerdictsParameterExtraction.validate
-from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
 from sklearn.feature_extraction import DictVectorizer
@@ -98,7 +98,7 @@ def cross_validation(db, tag_name, weight, test=True, soft_max = True):
             x = x_db
             y = tag
 
-        predicted_results, probabilities = predict_svm(x, trained_model)
+        predicted_results, probabilities = predict_forest(x, trained_model)
         goal_labels = y.to_numpy()
         original_indices = y.index.to_numpy()
         rec, prec, f1, ones = check_prediction(predicted_results, goal_labels, weight, tag_name, original_indices, db, probabilities,with_ones= True)
@@ -123,12 +123,12 @@ def train_func(x_db, tag, weight):
 
     weights = (y_train.to_numpy() * weight) + 1
 
-    clf = SVC(probability=True)  # kernel='linear')#, C=100)
+    clf = RandomForestClassifier(max_depth=2, random_state=0)  # kernel='linear')#, C=100)
     clf.fit(x_train, y_train, sample_weight=weights)
 
     return clf
 
-def predict_svm(x,  clf):
+def predict_forest(x, clf):
     # create predictions of which are the correct sentences
     x = x.loc[:, x.columns != SENTENCE]
     # x = remove_strings(x)
@@ -297,7 +297,7 @@ def remove_irrelevant_sentences(df):
 
 
 if __name__ == "__main__":
-    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\DB 0f 27.6.csv"
+    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\maasar only less features 27.06.csv"
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
     # path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
     db_initial = pd.read_csv(path, header=0, na_values='')
