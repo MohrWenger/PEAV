@@ -75,6 +75,7 @@ def train_and_tag_from_db(db, tag_name):
 
 def cross_validation(db, tag_name, weight, test=True, soft_max = True):
     all_files = np.unique(db[FILE_NAME])
+    after_max = pd.DataFrame(columns= [SENTENCE])
     np.random.seed(0)
     np.random.shuffle(all_files)
     file_num = len(all_files)
@@ -104,7 +105,7 @@ def cross_validation(db, tag_name, weight, test=True, soft_max = True):
         rec, prec, f1, ones = check_prediction(predicted_results, goal_labels, weight, tag_name, original_indices, db, probabilities,with_ones= True)
         if soft_max:
             # ones = smaller_sentence_pool(predicted_results, tag_name, original_indices, db, probabilities)
-            after_max = apply_argmax(ones)
+            after_max = apply_argmax(ones, after_max)
             true_negative = 120
             false_negative = 15
             rec, prec,f1 = evaluate_prediction(after_max, weight,true_negative, false_negative)
@@ -157,14 +158,12 @@ def evaluate_prediction(after_max, weights, true_negative, false_negative):
 def calc_F1(true_positive, true_negative, false_negative, false_positive):
     return true_positive / (true_positive + 0.5 * (false_positive + false_negative))
 
-def apply_argmax(ones):
+def apply_argmax(ones,after_max):
     files = np.unique(ones[FILE_NAME])
-    after_max = pd.DataFrame(columns= [SENTENCE])
     for f in files:
         temp = ones.loc[ones[FILE_NAME] == f]
         if any(temp[CONTAINS_NUMBER]):
             temp = temp.loc[temp[CONTAINS_NUMBER] == True]
-        #TODO - apply the actual argmax ... This is now by file names
         max = temp[PROBA_VAL].argmax()
 
         s_line = temp.iloc[max]
@@ -297,7 +296,7 @@ def remove_irrelevant_sentences(df):
 
 
 if __name__ == "__main__":
-    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\DB 0f 27.6.csv"
+    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\DB of 27.6.csv"
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
     # path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
     db_initial = pd.read_csv(path, header=0, na_values='')
@@ -308,4 +307,4 @@ if __name__ == "__main__":
     tag = db_filtered[TAG_COL]
     # compute_PCA(db_filtered)
     # vizualize(db_filtered)
-    cross_validation(db_filtered, TAG_COL, 18, soft_max=True )
+    cross_validation(db_filtered, TAG_COL, 20, soft_max=True )

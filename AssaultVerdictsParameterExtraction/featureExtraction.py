@@ -9,11 +9,17 @@ COL_HEB_NAMES = []
 COL_CLAUSES = []
 
 # Order of copying: list of bad words, list of bad signs list of good words list of moderate words
-HEB_WORDS_TO_EXTRACT = ['עו*תרה*(ים)*(ות)*','ה*תובעת*','ביקשה*','ה*תביעה','מבחן','צבאי','בי*טחון','קבע','דורשת*','בימים',
-                        'בין','מתחם','יפחת','יעלה','נגזר','נדון','ה*צדדים',"\"","/",r"\\",":",'גוזרת*(ים)*(ות)*',
-                        '[נמ]טילה*(ים)*(ות)*',' ד[(נה)(ן)(נים)(נות)]','משיתה*','מחליטה*(ים)*(ות)*','לגזור','להטיל',
-                        'יי*מצא מתאים', 'מאסר', 'עונשין', 'שירות', 'תנאי', 'יעבור', 'עבודות', 'צו', 'קהיל[הת]י?', 'ציבור',
-                        'תועלת', 'נאשם', 'קנס'] + pe.TIME_UNITS_ARR
+HEB_WORDS_TO_EXTRACT = ['עו*תרה*(ים)*(ות)*','ה*תובעת*','ביקשה*','ה*תביעה',"ה*סנגור","בי*קשה*","ערעור",
+                        'מבחן','צבאי','בי*טחון','קבע','דורשת*','בימים',
+                        'בין','מתחם','יפחת','יעלה','נגזר','נדון','ה*צדדים',"\"","/",r"\\",":"
+                        ,'גוזרת*(ים)*(ות)*'
+                        ,"ריצוי בפועל","מה[ןם]","היתרה","מתו*כ[ןם]"
+                        #' [1-9]+ *חודשי מאסר',' [1-9]+ *שנות מאסר',
+                        ,'[נמ]טילה*(ים)*(ות)*',' ד[(נה)(ן)(נים)(נות)]','משיתה*(ים)*(ות)*','מחליטה*(ים)*(ות)*','לגזור','להטיל'
+                        #'יי*מצא מתאים', 'מאסר', 'עונשין', 'שירות', 'תנאי', 'יעבור',
+                        ,'עבודות', 'צו', 'קהיל[הת]י?', 'ציבור'
+                        ,'תועלת', 'נאשם', 'קנס','שי*רות המבחן','אלא אם','מו*תו*נ[(ה)(ים)]',' ב*סך','כס[ףפ]' #,'על תנאי','שנ[(ות)(ים)] מאסר','345','351','346','347','348','349','350'
+                        ,'3 שנים','אנ[יו] '] + pe.TIME_UNITS_ARR
 
 for word in HEB_WORDS_TO_EXTRACT:
     COL_HEB_NAMES.extend(["first " + word, "first " + word + " ratio", "last " + word, "last " + word + " ratio", "did " +word+ " appear",
@@ -55,11 +61,23 @@ def does_contain_number(sentence):
     :return:
     """
     new_sentence = pe.numberExchange(sentence)
-    return any(map(str.isdigit, new_sentence))
+    smaller_then_50 = 0
+    bigger_then_300 = 0
+    contains = False
+    numbers = re.findall('[1-9]+',new_sentence)
+    for num in numbers:
+        contains = True
+        if float(num) < 50:
+            smaller_then_50 += 1
+        elif float(num) > 1000:
+            bigger_then_300 += 1
+
+
+    return contains, smaller_then_50, bigger_then_300
 
 
 def add_syntax_features(featureDB):
-    txt = open('output.conll', 'r').read()
+    txt = open('old_attempts/output.conll', 'r').read()
     for name in SYNTAX_NAMES:
         i_next = 0
         column = []
@@ -80,18 +98,18 @@ def operating_func(filename, featureDB):
     for i in range(len(sentences)):
         important_words_list = extract_important_words(sentences[i], HEB_WORDS_TO_EXTRACT)
         # clauses_list = extract_important_words(sentences[i], pe.CLAUSES)
-        bool_number = does_contain_number(sentences[i])
+        bool_number,small_nums, big_nums = does_contain_number(sentences[i])
 
         # here I add values to DB
         sentence_line = pd.DataFrame(
-            [[filename, sentences[i], len_sentences[i], sentence_allfile_count, sent_num[i], bool_number,
+            [[filename, sentences[i], len_sentences[i], sentence_allfile_count, sent_num[i], bool_number, small_nums, big_nums,
               sent_num[i]/sentence_allfile_count] +
              [j for i in important_words_list for j in i] + [0] * len(SYNTAX_NAMES)],
             columns=["filename", "sentence", "length sentence", "total sentences", "sentence num",
-                     "does time appear", "ratio in file"] + COL_HEB_NAMES + SYNTAX_NAMES)
+                     "does number appear","smaller than 50","bigger than 100","ratio in file"] + COL_HEB_NAMES + SYNTAX_NAMES)
         featureDB = pd.concat([featureDB, sentence_line])
-    return add_syntax_features(featureDB)
-
+    # return add_syntax_features(featureDB)
+    return featureDB
 
 def find_best_params(featureDB):
     import numpy as np
@@ -113,6 +131,8 @@ def extract(directory, running_opt):
             relevant_cases = json.load(json_file)  # Cases of the validation file
             for i, filename in tqdm(enumerate(os.listdir(directory))):  # when iterating through all files in folder
                 if filename.endswith(".txt") and filename in relevant_cases:
+                    if filename == "m02001206.txt":
+                        print("break point")
                     featureDB = operating_func(filename, featureDB)
                     # featureDB = pd.concat([featureDB, sentence_line])
 
@@ -125,6 +145,7 @@ def extract(directory, running_opt):
                 counter += 1
 
     featureDB.to_csv("feature_DB.csv", encoding="utf-8")
+    print("number of cases = ", len(featureDB["filename"]))
     return featureDB
 
 
@@ -132,7 +153,7 @@ if __name__ == "__main__":
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/final_verdicts_dir/"
     path = r"final_verdicts_dir/"
     extract(path, 0)
-
+    print(len(HEB_WORDS_TO_EXTRACT))
 
 
 

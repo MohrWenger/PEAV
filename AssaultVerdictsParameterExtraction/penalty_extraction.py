@@ -13,6 +13,7 @@ VERDICTS_DIR = "final_verdicts_dir/"
 
 DISTRICT = "district"
 CASE_NUM = "case_num"
+FILE_NAME = "filename"
 ACCUSED_NAME = "accused_name"
 NUM_LINES = "num_lines"
 DAY = "day"
@@ -299,7 +300,8 @@ def extracting_penalty_sentences(text, count_sentences=False):
     sentences = []
     len_sent = []
     sent_num = []
-    indices = [m.start() for m in re.finditer("שירות|מאסר", text)]
+    # indices = [m.start() for m in re.finditer("שירות|מאסר", text)]
+    indices = [m.start() for m in re.finditer("מאסר", text)]
 
     last_dot = 0
     sentence_count = 0
@@ -459,7 +461,7 @@ def fromVerdictsToDB(running_opt):
                     db = coreFromVerdicts(db, filename, directory)
 
     elif running_opt == 1:
-        batch = pd.read_csv("Igud_Gzar2 - Sheet1.csv", error_bad_lines=False)
+        batch = pd.read_csv("db_csv_files/Igud_Gzar2 - Sheet1.csv", error_bad_lines=False)
         files = batch['קובץ']  # Take all htm urls as a list
         for i in range(len(files)):                     # when iterating through all files that are Gzar Dins
             if type(files[i]) == str:
@@ -492,21 +494,22 @@ def from_sentence_list(case_names, sentence_list):
         if type(sentence_list[i]) == str:
             all_times, prison_time, time_unit = extract_time_from_sentence(sentence_list[i])
             sentence_line = pd.DataFrame(
-                [[case_names[i], sentence_list[i],all_times, prison_time, time_unit]],
+                [[case_names[i], sentence_list[i],all_times, float(prison_time), time_unit]],
                 # here I add values to DB
-                columns=[CASE_NUM,"PENALTY_SENTENCE","OPTIONAL TIMES","VOTED TIME", "units"])  # Here adding a title
+                columns=[FILE_NAME,"PENALTY_SENTENCE","OPTIONAL TIMES","VOTED TIME", "units"])  # Here adding a title
             s_db = pd.concat([s_db, sentence_line])
         else:
             sentence_line = pd.DataFrame(
                 [[case_names[i], sentence_list[i], " -- ", " -- ", " -- "]],
                 # here I add values to DB
-                columns=[CASE_NUM, "PENALTY_SENTENCE", "OPTIONAL TIMES", "VOTED TIME", "units"])  # Here adding a title
+                columns=[FILE_NAME, "PENALTY_SENTENCE", "OPTIONAL TIMES", "VOTED TIME", "units"])  # Here adding a title
             s_db = pd.concat([s_db, sentence_line])
 
     s_db.to_csv('pipline on test set.csv', encoding='utf-8')
+    return s_db
 
 def pipline_on_test_set():
-    test_set = pd.read_csv("Test Set - PEAV - Sheet1.csv", error_bad_lines=False)
+    test_set = pd.read_csv("db_csv_files/Test Set - PEAV - Sheet1.csv", error_bad_lines=False)
     from_sentence_list(test_set["Case_Name"], test_set["עונש בפועל (המשפט הרלוונטי מהטקסט)"])
 
 if __name__ == "__main__":

@@ -87,12 +87,13 @@ def using_crfsuite(x_db, tag, tag_name, df, test = True):
     x_train_dict, y_train_lst = arrange_for_crf(x_train, y_train)
 
     crf = sklearn_crfsuite.CRF(
-        algorithm='pa',
-        # c1=0.1,
-        # c2=0.1,
-        # max_iterations=100,
-        # all_possible_transitions=True,
-        # all_possible_states = True
+        # algorithm='arow',
+        algorithm='lbfgs',
+        c1=0.1,
+        c2=0.6,
+        max_iterations=10000,
+        all_possible_transitions=True,
+        all_possible_states = True
     )
     print(len(x_train_dict))
     print(len(y_train_lst))
@@ -111,14 +112,17 @@ def using_crfsuite(x_db, tag, tag_name, df, test = True):
     labels = list(crf.classes_)
     print("labels = ", labels)
     y_pred = crf.predict(x)
+    counter = 0
     for i, lab in enumerate(y):
         lab = np.array(lab)
         if '1' in lab:
             correct = np.argwhere(lab == '1')[0]
             print(y_pred[i][int(correct)])
+            counter += int(y_pred[i][int(correct)])
         else:
             print("goal had no punisment for this one")
     print_sent_ones(y, y_pred, x, file_name_dict, df)
+    print(counter/len(y))
     print(metrics.flat_f1_score(y, y_pred,
                           average='weighted', labels=labels))
     # check_prediction(predicted_results, goal_labels, tag_name,original_indices, df)
@@ -186,7 +190,8 @@ def calc_F1 (true_positive, true_negative, false_negative, false_positive):
     return true_positive/(true_positive+0.5*(false_positive+false_negative))
 
 if __name__ == "__main__":
-    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\DB of 16.5 - Sheet1.csv"
+    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\DB of 27.6.csv"
+    # path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\maasar only less features 27.06.csv"
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
     # path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
     db_initial = pd.read_csv(path, header=0, na_values='')

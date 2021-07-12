@@ -153,7 +153,7 @@ def strip_case_name(url):
     name_file = name_file.replace(".doc", ".txt")
     return name_file
 
-test_case_files = pd.read_csv("Test Set - PEAV - Sheet1.csv", error_bad_lines = False)
+test_case_files = pd.read_csv("db_csv_files/Test Set - PEAV - Sheet1.csv", error_bad_lines = False)
 files = test_case_files['מזהה (url)']
 
 test_set_cases = list(map(strip_case_name, files))

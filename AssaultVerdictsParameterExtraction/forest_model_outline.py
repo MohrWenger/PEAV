@@ -104,9 +104,9 @@ def cross_validation(db, tag_name, weight, test=True, soft_max = True):
         rec, prec, f1, ones = check_prediction(predicted_results, goal_labels, weight, tag_name, original_indices, db, probabilities,with_ones= True)
         if soft_max:
             # ones = smaller_sentence_pool(predicted_results, tag_name, original_indices, db, probabilities)
-            after_max = apply_argmax(ones)
-            true_negative = 120
-            false_negative = 15
+            after_max, tn, fn = apply_argmax(ones)
+            true_negative = tn
+            false_negative = fn
             rec, prec,f1 = evaluate_prediction(after_max, weight,true_negative, false_negative)
             # rec, prec, f1 = check_prediction(after_max[PREDICTED_TAG], after_max[ORIGIN_TAG], weight, tag_name, original_indices, db,
 
@@ -158,6 +158,8 @@ def calc_F1(true_positive, true_negative, false_negative, false_positive):
     return true_positive / (true_positive + 0.5 * (false_positive + false_negative))
 
 def apply_argmax(ones):
+    true_negatives = 0
+    false_negatives = 0
     files = np.unique(ones[FILE_NAME])
     after_max = pd.DataFrame(columns= [SENTENCE])
     for f in files:
@@ -168,12 +170,15 @@ def apply_argmax(ones):
         max = temp[PROBA_VAL].argmax()
 
         s_line = temp.iloc[max]
+        # temp.drop(max)
+        true_negatives += len(temp[ORIGIN_TAG] == 0)
+        false_negatives += len(temp[ORIGIN_TAG] == 1)
         # add_line(after_max, max, ORIGIN_TAG,1,temp,PROBA_VAL)
         after_max = after_max.append(dict(s_line), ignore_index= True)
 
         # print(max)
     after_max.to_csv("arg_max_output.csv", encoding="utf-8")
-    return after_max
+    return after_max, true_negatives, false_negatives
 
 
 
@@ -297,7 +302,7 @@ def remove_irrelevant_sentences(df):
 
 
 if __name__ == "__main__":
-    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\maasar only less features 27.06.csv"
+    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\DB of 27.6.csv"
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
     # path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
     db_initial = pd.read_csv(path, header=0, na_values='')

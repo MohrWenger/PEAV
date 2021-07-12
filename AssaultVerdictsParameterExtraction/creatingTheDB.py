@@ -179,7 +179,7 @@ if __name__ == "__main__":
 
     directory = r"C:\Users\oryiz\Downloads\html"
     # directory = VERDICTS_DIR
-    batch = pd.read_csv("Igud_Gzar2 - Sheet1.csv", error_bad_lines = False)
+    batch = pd.read_csv("db_csv_files/Igud_Gzar2 - Sheet1.csv", error_bad_lines = False)
     for i, filename in enumerate(os.listdir(directory)):
         print(i)
         # new_name = filename.strip("verdicts")

@@ -49,4 +49,4 @@ def only_annotated():
     print(max(sentences_length), " and min = ", min(sentences_length))
 
 if __name__ == "__main__":
-    only_annotated()
+    all_db_checks()

@@ -52,6 +52,11 @@ def loss_1_0(case_name_list, check_match_func, df, all_output, goal_output, rele
             if temp_df[0]:
                 correct_rate += 1
     print(correct_rate)
+    print("Error (difference):",np.mean(df["Error (difference)"]))
+    print("taged = ",np.nanmean(df["Goal time"]), "and pred = ", np.nanmean(df["predicted time"]))
+    print("taged = ",np.nanmedian(df["Goal time"]), "and pred = ", np.nanmedian(df["predicted time"]))
+    print(len(case_name_list))
+    print(correct_rate/(len(case_name_list) - 7))
     # temp_df = df.loc[df["Error (difference)"] != "NO sentence"]
     # print(np.nanmean(np.array(temp_df["Error (difference)"])))
     # print(np.std(temp_df["Error (difference)"]))
@@ -69,8 +74,8 @@ def time_comp(pred_line, relevent_pred_col, goal_line, relevent_test_col, write_
     else:
         dist = "NO sentence"
 
-    temp_df = pd.DataFrame([[pred_line[OUR_CASENAME].tolist()[0], pred_line[PRED_MAIN_SENTENCE].tolist()[0], pred_time,
-                             goal_line[TEST_CASENAME].tolist()[0],goal_line[TEST_MAIN_SENTENCE].tolist()[0],goal_time,
+    temp_df = pd.DataFrame([[pred_line[OUR_CASENAME].tolist()[0], pred_line[PRED_MAIN_SENTENCE].tolist()[0], float(pred_time),
+                             goal_line[TEST_CASENAME].tolist()[0],goal_line[TEST_MAIN_SENTENCE].tolist()[0],float(goal_time),
                              dist, int(goal_time == pred_time)]],
                            columns=["predicted Casename", "predicted sentence", "predicted time",
                                     "Goal Casename", "Goal sentence", "Goal time",
@@ -160,14 +165,15 @@ if __name__ == "__main__":
     with open('test_case_filenames.txt') as json_file:
         relevant_cases = json.load(json_file)
 
-    validated_df = pd.read_csv("Test Set - PEAV - Sheet1.csv", error_bad_lines=False)
+    validated_df = pd.read_csv("db_csv_files/Test Set - PEAV - Sheet1.csv", error_bad_lines=False)
     validated_df.sort_values(by=[TEST_CASENAME])
     # our_output = pd.read_csv("pipline on test set.csv", error_bad_lines=False)
-    our_output = pd.read_csv("verdict_penalty.csv", error_bad_lines=False)
+    our_output = pd.read_csv(r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\verdict_penalty.csv", error_bad_lines=False)
+    # our_output = pd.read_csv(r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\verdict_penalty.csv", error_bad_lines=False)
     our_output.sort_values(by=[OUR_CASENAME])
     # relevant_cases.sort()
-    loss_1_0(relevant_cases, validate_sentence, df, our_output, validated_df, PRED_MAIN_SENTENCE, TEST_MAIN_SENTENCE)
-    # loss_1_0(relevant_cases, time_comp, df, our_output, validated_df, PRED_TIME, TEST_TIME)
+    # loss_1_0(relevant_cases, validate_sentence, df, our_output, validated_df, PRED_MAIN_SENTENCE, TEST_MAIN_SENTENCE)
+    loss_1_0(relevant_cases, time_comp, df, our_output, validated_df, PRED_TIME, TEST_TIME)
 
 
 

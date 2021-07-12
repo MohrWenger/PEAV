@@ -868,7 +868,7 @@ def fromVerdictsToDB():
     # charges = []
     # lines_number = []
     # all_accused = []
-    batch = pd.read_csv("Igud_Gzar2 - Sheet1.csv", error_bad_lines = False)
+    batch = pd.read_csv("db_csv_files/Igud_Gzar2 - Sheet1.csv", error_bad_lines = False)
     files = batch['קובץ']#Take all htm urls as a list
     directory = VERDICTS_DIR               #text files eddition:
     # years = []
@@ -1156,7 +1156,7 @@ if __name__ == "__main__":
     print("no charges found", no_chargesCounter)
     print("no age found = ", no_ageCounter)
     # from_search_to_local()
-    df = pd.read_csv("verdict_penalty.csv", error_bad_lines= False)
+    df = pd.read_csv("db_csv_files/verdict_penalty.csv", error_bad_lines= False)
     df = df.loc[df['VOTED TIME'] != 0]
     # df = df.loc[df['VOTED TIME'] > 30]
     df = df.loc[df['VOTED TIME'] < 30]
