@@ -10,6 +10,7 @@ This file is used for validating our output in comparison with a mannualy segmen
 TAGGER = "מתייגת"
 OUR_CASENAME = "case_num"
 TEST_CASENAME = "Case_Name"
+FILE_NAME = "filename"
 
 PRED_MAIN_SENTENCE = "PENALTY_SENTENCE"
 TEST_MAIN_SENTENCE = "עונש בפועל (המשפט הרלוונטי מהטקסט)"
@@ -39,7 +40,7 @@ def loss_1_0(case_name_list, check_match_func, df, all_output, goal_output, rele
 
     # all_output[OUR_CASENAME] = all_output[OUR_CASENAME].strip("final_verdicts")
     for i in range(len(relevant_cases)):
-        predicted_line = all_output.loc[all_output[OUR_CASENAME] == relevant_cases[i]]
+        predicted_line = all_output.loc[all_output[FILE_NAME] == relevant_cases[i]]
         goal_line = goal_output.loc[goal_output[TEST_CASENAME] == relevant_cases[i]]
         s = goal_line.shape
         print(s)
@@ -52,12 +53,18 @@ def loss_1_0(case_name_list, check_match_func, df, all_output, goal_output, rele
             if temp_df[0]:
                 correct_rate += 1
     print(correct_rate)
+    num_wrong = len(df.loc[df[PRED_TIME] == -1])
+    print("num wrong = ", num_wrong)
+    df = df.loc[df["Goal time"] != -1]
+
     print("Error (difference):",np.mean(df["Error (difference)"]))
-    print("taged = ",np.nanmean(df["Goal time"]), "and pred = ", np.nanmean(df["predicted time"]))
-    print("taged = ",np.nanmedian(df["Goal time"]), "and pred = ", np.nanmedian(df["predicted time"]))
+    print("mean: taged = ",np.nanmean(df["Goal time"]), "and pred = ", np.nanmean(df[PRED_TIME]))
+    print("min: taged = ",np.min(df["Goal time"]), "and pred = ", np.min(df[PRED_TIME]))
+    print("max: taged = ",np.max(df["Goal time"]), "and pred = ", np.max(df[PRED_TIME]))
+    print("median: taged = ",np.nanmedian(df["Goal time"]), "and pred = ", np.nanmedian(df[PRED_TIME]))
     print(len(case_name_list))
-    print(correct_rate/(len(case_name_list) - 7))
-    # temp_df = df.loc[df["Error (difference)"] != "NO sentence"]
+    print(correct_rate/(len(case_name_list) - num_wrong))
+    # temp_df = df.mealoc[df["Error (difference)"] != "NO sentence"]
     # print(np.nanmean(np.array(temp_df["Error (difference)"])))
     # print(np.std(temp_df["Error (difference)"]))
     df.to_csv('validation result.csv', encoding= 'utf-8')
@@ -65,24 +72,45 @@ def loss_1_0(case_name_list, check_match_func, df, all_output, goal_output, rele
 
 
 def time_comp(pred_line, relevent_pred_col, goal_line, relevent_test_col, write_to_df=False):
-    pred_time = pred_line[relevent_pred_col].tolist()[0]
-    goal_time = goal_line[relevent_test_col].tolist()[0]
-    if pred_time != NO_SENTENCE:
-        goal_time = float(goal_time)
-        pred_time = float(pred_time)
-        dist = np.abs(goal_time - pred_time)
+    if len(pred_line) > 0:
+        pred_time = pred_line[relevent_pred_col].tolist()[0]
+        goal_time = goal_line[relevent_test_col].tolist()[0]
+        if pred_time != NO_SENTENCE:
+            goal_time = float(goal_time)
+            pred_time = float(pred_time)
+            dist = np.abs(goal_time - pred_time)
+            temp_df = pd.DataFrame(
+                [[pred_line[FILE_NAME].tolist()[0], pred_line[PRED_MAIN_SENTENCE].tolist()[0], float(pred_time),
+                  goal_line[TEST_CASENAME].tolist()[0], goal_line[TEST_MAIN_SENTENCE].tolist()[0], float(goal_time),
+                  dist, int(goal_time == pred_time)]],
+                columns=["predicted Casename", "predicted sentence", PRED_TIME,
+                         "Goal Casename", "Goal sentence", "Goal time",
+                         "Error (difference)", "Error (Binary)"])
+        else:
+            dist = "NO sentence"
+            temp_df = pd.DataFrame(
+                [[pred_line[FILE_NAME].tolist()[0], pred_line[PRED_MAIN_SENTENCE].tolist()[0], -1,
+                  goal_line[TEST_CASENAME].tolist()[0], goal_line[TEST_MAIN_SENTENCE].tolist()[0], -1,
+                  -1, -1]],
+                columns=["predicted Casename", "predicted sentence", PRED_TIME,
+                         "Goal Casename", "Goal sentence", "Goal time",
+                         "Error (difference)", "Error (Binary)"])
+
+        if write_to_df:
+            if goal_time == pred_time:
+                return True, temp_df
+            return False, temp_df
+
     else:
         dist = "NO sentence"
+        temp_df = pd.DataFrame(
+            [[dist, -1, -1,
+              -1, -1, -1,
+              -1, -1]],
+            columns=["predicted Casename", "predicted sentence", PRED_TIME,
+                     "Goal Casename", "Goal sentence", "Goal time",
+                     "Error (difference)", "Error (Binary)"])
 
-    temp_df = pd.DataFrame([[pred_line[OUR_CASENAME].tolist()[0], pred_line[PRED_MAIN_SENTENCE].tolist()[0], float(pred_time),
-                             goal_line[TEST_CASENAME].tolist()[0],goal_line[TEST_MAIN_SENTENCE].tolist()[0],float(goal_time),
-                             dist, int(goal_time == pred_time)]],
-                           columns=["predicted Casename", "predicted sentence", "predicted time",
-                                    "Goal Casename", "Goal sentence", "Goal time",
-                                    "Error (difference)","Error (Binary)"])
-    if write_to_df:
-        if goal_time == pred_time:
-            return True, temp_df
         return False, temp_df
 
 
@@ -168,12 +196,13 @@ if __name__ == "__main__":
     validated_df = pd.read_csv("db_csv_files/Test Set - PEAV - Sheet1.csv", error_bad_lines=False)
     validated_df.sort_values(by=[TEST_CASENAME])
     # our_output = pd.read_csv("pipline on test set.csv", error_bad_lines=False)
-    our_output = pd.read_csv(r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\verdict_penalty.csv", error_bad_lines=False)
-    # our_output = pd.read_csv(r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\verdict_penalty.csv", error_bad_lines=False)
-    our_output.sort_values(by=[OUR_CASENAME])
+    our_output = pd.read_csv(r"D:\PEAV\AssaultVerdictsParameterExtraction\verdict_penalty.csv", error_bad_lines=False)
+    # our_output = pd.read_csv(r"D:\PEAV\AssaultVerdictsParameterExtraction\verdict_penalty.csv", error_bad_lines=False)
+    our_output.sort_values(by=[FILE_NAME])
     # relevant_cases.sort()
     # loss_1_0(relevant_cases, validate_sentence, df, our_output, validated_df, PRED_MAIN_SENTENCE, TEST_MAIN_SENTENCE)
     loss_1_0(relevant_cases, time_comp, df, our_output, validated_df, PRED_TIME, TEST_TIME)
+    # loss_1_0(relevant_cases, time_comp, df, our_output, validated_df, PRED_TIME, TEST_TIME)
 
 
 

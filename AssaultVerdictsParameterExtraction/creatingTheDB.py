@@ -181,11 +181,11 @@ if __name__ == "__main__":
     # directory = VERDICTS_DIR
     batch = pd.read_csv("db_csv_files/Igud_Gzar2 - Sheet1.csv", error_bad_lines = False)
     for i, filename in enumerate(os.listdir(directory)):
-        print(i)
-        # new_name = filename.strip("verdicts")
-        # print("new filename: ",  VERDICTS_DIR+new_name)
-        # f = open(NEW_VERDICTS_DIR + new_name, "w")
-        # origin_f = open(VERDICTS_DIR + filename)
+        # print(i)
+        new_name = filename.strip("verdicts")
+        print("new filename: ",  VERDICTS_DIR+new_name)
+        f = open(NEW_VERDICTS_DIR + new_name, "w")
+        origin_f = open(VERDICTS_DIR + filename)
         # print(origin_f.read())
         # f.write(origin_f.read())
         if filename.endswith(".htm"):

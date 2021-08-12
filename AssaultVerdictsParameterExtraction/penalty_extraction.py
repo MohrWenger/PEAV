@@ -14,6 +14,7 @@ VERDICTS_DIR = "final_verdicts_dir/"
 DISTRICT = "district"
 CASE_NUM = "case_num"
 FILE_NAME = "filename"
+SENTENCE = "sentence"
 ACCUSED_NAME = "accused_name"
 NUM_LINES = "num_lines"
 DAY = "day"
@@ -189,13 +190,13 @@ def find_time_act(act_sent):
     if len(times) > 2 and float(times[0]) == (float(times[1]) + float(times[2])): #A structure that returns: X1 time in total X2 actual and X3 probation
         winner_time = times[1]
 
-    elif len(times) > 2 and act_sent.find("יתר") != -1:
-        winner_time = times[1]
+    # elif len(times) > 2 and act_sent.find("יתר") != -1:
+    #     winner_time = times[1]
 
     else:
         t_units = find_time_units(act_sent)
         for t in times:
-            if (t_units == YEAR and float(t) > 20) or ( float(t) > 20 * 12) :
+            if (t_units == YEAR and float(t) > 20) or ( float(t) > 20 * 12) or (float(t)<0):
                 continue
 
             else:
@@ -225,6 +226,27 @@ def replace_value_with_key(sentence):
 
     return sentence
 
+def does_contain_number(sentence):
+    """
+    This function returns if a sentence contains a number
+    :param sentence:
+    :return:
+    """
+    new_sentence = numberExchange(sentence)
+    smaller_then_50 = 0
+    bigger_then_300 = 0
+    contains = False
+    numbers = re.findall('[1-9]+',new_sentence)
+    for num in numbers:
+        if not (new_sentence.find("עמוד") != -1 and new_sentence.find("עמוד") <= new_sentence.find(num) <= (new_sentence.find("עמוד") + 6)):
+            contains = True
+            if float(num) < 50:
+                smaller_then_50 += 1
+            elif float(num) > 1000:
+                bigger_then_300 += 1
+
+
+    return contains, smaller_then_50, bigger_then_300
 
 def calc_punishment(sentence):
     """
@@ -253,7 +275,7 @@ def calc_score(sentence):
 
     list_of_bad_words = ['עו*תרה*(ים)*(ות)*','ה*תובעת*','ביקשה*','ה*תביעה','מבחן','צבאי','בי*טחון','קבע','דורשת*','בימים','בין','מתחם','יפחת','יעלה','נגזר','נדון','ה*צדדים']
     list_of_moderate_bad_words = ["\"","/","\\"] #":",
-    list_of_good_words = ['גוזרת*(ים)*(ות)*','[נמ]טילה*(ים)*(ות)*',' ד[(נה)(ן)(נים)(נות)]','משיתה*','מחליטה*(ים)*(ות)*']
+    list_of_good_words = ['גוזרת*(ים)*(ות)*' ,'[1-9]+.*חו*דשי מאסר','[1-9]+.*שנו*ת מאסר','בפועל','[נמ]טילה*(ים)*(ות)*',' ד[(נה)(ן)(נים)(נות)]','משיתה*','מחליטה*(ים)*(ות)*']
     list_of_moderate_good_words = ['לגזור','להטיל','יי*מצא מתאים']
     # if sentence.find() != -1 and sentence.find("\"") != -1 and (sentence.find("/") != -1 or sentence.find("\\")):  # maybe this is a quote?
     #     score_relevancy -=4
@@ -346,15 +368,17 @@ def extract_penalty_params(sentences, len_sentences):
         max_score_act = -10
         max_score_prob = -10
         for i, sentence in enumerate(relevant_sentences[::-1]):
-            scr_act, scr_prob = calc_score(sentence)
-            scr_act = scr_act / relevant_sent_lens[i]
+            num_appear, smaller_50, bigger_1000 = does_contain_number(sentence)
+            if num_appear and smaller_50:
+                scr_act, scr_prob = calc_score(sentence)
+                scr_act = scr_act / relevant_sent_lens[i]
 
-            if scr_act > max_score_act:
-                max_score_act = scr_act
-                main_sentence_act = sentence
-            if scr_prob > max_score_prob:
-                max_score_prob = scr_prob
-                main_sentence_prob = sentence
+                if scr_act > max_score_act:
+                    max_score_act = scr_act
+                    main_sentence_act = sentence
+                if scr_prob > max_score_prob:
+                    max_score_prob = scr_prob
+                    main_sentence_prob = sentence
 
         all_times, prison_time, time_unit = extract_time_from_sentence(main_sentence_act)
     main_sentence_prob = numberExchange(main_sentence_act)
@@ -365,9 +389,9 @@ def extract_time_from_sentence(sentence):
         main_sentence_act = sentence
         all_times, prison_time = find_time_act (main_sentence_act)
         time_unit = find_time_units(main_sentence_act)
-
         if time_unit == YEAR:
-            prison_time = float(prison_time)*12
+            if float(prison_time) > 0:
+                prison_time = float(prison_time)*12
             time_unit = YEAR
         else:
             time_unit = MONTH
@@ -424,7 +448,7 @@ def coreFromVerdicts(db, filename, directory):
     text = open(file_name, "r", encoding="utf-8").read()
 
     # print("^^^ File is ", file_name, " ^^^ - not psak", " counter = ", counter)
-    if filename.find("SH-12-03-28879-11.txt") != -1:
+    if filename.find("m06007079-349.txt") != -1:
         print("break point")
     sentence_list, len_sent = extracting_penalty_sentences(text)
     main_penalty, sentence, all_sentences, all_times, time, time_unit = extract_penalty_params(sentence_list, len_sent)  # Here I call the penalty func
@@ -435,7 +459,7 @@ def coreFromVerdicts(db, filename, directory):
     sentence_line = pd.DataFrame(
         [[filename, "Gzar", main_penalty, sentence, all_sentences, all_times, time, time_unit]],
         # here I add values to DB
-        columns=[CASE_NUM, "TYPE", "Main Punishment", "PENALTY_SENTENCE", "ALL SENTENCES", "OPTIONAL TIMES",
+        columns=[FILE_NAME, "TYPE", "Main Punishment", "sentence", "ALL SENTENCES", "OPTIONAL TIMES",
                  "VOTED TIME", "units"])  # Here adding a title
     db = pd.concat([db, sentence_line])
     return db
@@ -459,6 +483,7 @@ def fromVerdictsToDB(running_opt):
                     counter += 1
                     print(counter)
                     db = coreFromVerdicts(db, filename, directory)
+
 
     elif running_opt == 1:
         batch = pd.read_csv("db_csv_files/Igud_Gzar2 - Sheet1.csv", error_bad_lines=False)
@@ -496,13 +521,13 @@ def from_sentence_list(case_names, sentence_list):
             sentence_line = pd.DataFrame(
                 [[case_names[i], sentence_list[i],all_times, float(prison_time), time_unit]],
                 # here I add values to DB
-                columns=[FILE_NAME,"PENALTY_SENTENCE","OPTIONAL TIMES","VOTED TIME", "units"])  # Here adding a title
+                columns=[FILE_NAME,SENTENCE,"OPTIONAL TIMES","VOTED TIME", "units"])  # Here adding a title
             s_db = pd.concat([s_db, sentence_line])
         else:
             sentence_line = pd.DataFrame(
                 [[case_names[i], sentence_list[i], " -- ", " -- ", " -- "]],
                 # here I add values to DB
-                columns=[FILE_NAME, "PENALTY_SENTENCE", "OPTIONAL TIMES", "VOTED TIME", "units"])  # Here adding a title
+                columns=[FILE_NAME, SENTENCE, "OPTIONAL TIMES", "VOTED TIME", "units"])  # Here adding a title
             s_db = pd.concat([s_db, sentence_line])
 
     s_db.to_csv('pipline on test set.csv', encoding='utf-8')
@@ -527,6 +552,8 @@ if __name__ == "__main__":
     with open('verdict_list.txt') as json_file:
         verdicts_list = json.load(json_file)
 
+    # predicted = pd.read_csv("arg_max_output.csv", error_bad_lines=False)
+    # predicted = pd.read_csv("db_csv_files/RB_prediction_db.csv", error_bad_lines=False)
+    # from_sentence_list(predicted[FILE_NAME], predicted[SENTENCE])
     fromVerdictsToDB(2)
-
     # pipline_on_test_set()

@@ -13,11 +13,14 @@ def calculate_sentences_len(sentences):
     for s in sentences:
         sentences_len.append(len(s.split()))
     return sentences_len
+
 def adding_RB_pred_to_db (tagged_db):
     tagged_db[RB_PRED_COL] = np.zeros(len(tagged_db))  # FIll the RB row with zeros
     verdicts_included = np.unique(tagged_db[FILE_NAME])
 
     for ver in verdicts_included:
+        if ver == "s02004853-273.txt":
+            print('bp')
         temp_db = tagged_db.loc[tagged_db[FILE_NAME] == ver]
         sentences_len = temp_db[SENTENCE_LEN].tolist()
         sentences = temp_db[SENTENCE].tolist()
@@ -28,7 +31,10 @@ def adding_RB_pred_to_db (tagged_db):
         # print("pred = ", chosen_sentence)
         row = tagged_db.index[(tagged_db[FILE_NAME] == ver) & (tagged_db[SENTENCE] == chosen_sentence)] # The row with the chosen sentence
         # tagged_db[tagged_db.index == row[0]][RB_PRED_COL] = 1
+        print("ver = ", ver)
+
         tagged_db.at[row[0],RB_PRED_COL] = 1
+
         # print("sanity check: ",chosen_sentence == tagged_db.iloc[row[0]][SENTENCE])
         # print()
     return tagged_db
@@ -53,8 +59,16 @@ def check_per_verdict(tagged_db):
     pred = tagged_db[RB_PRED_COL].to_numpy()
     goal = tagged_db[TAG_COL].to_numpy()
     ver_num = len(np.unique(tagged_db[FILE_NAME]))
-    print("TP:",np.sum(goal[pred == 1]))
-    print("Sensitivity:",np.sum(goal[pred == 1])/ver_num)
+    tp = np.sum(goal[pred == 1])
+    fp = np.sum(pred) - tp
+    fn = np.sum(goal[pred == 0])
+    recall = tp/(tp+fn)
+    percision = tp/(tp+fp)
+    print("TP:",tp)
+    print("FN:",fn)
+    print("Sensitivity:",recall)
+    print("percision:",percision)
+    print("F1 = ", 2*recall*percision/(recall+percision))
 
 
 def compare_selected_cases_per_DB(path):
@@ -73,11 +87,18 @@ def compare_selected_cases_per_DB(path):
 
     print(len(conj))
 
+def subset_of_tagged_correct(db):
+    rb_decision = db.loc[db[RB_PRED_COL] == 1]
+    rb_decision.to_csv("db_csv_files/RB_prediction_db.csv", encoding = 'utf-8')
+
 if __name__ == "__main__":
-    path = r"D:/PEAV/AssaultVerdictsParameterExtraction/db_csv_files/just tagged sentences.csv"
+    path = r"D:/PEAV/AssaultVerdictsParameterExtraction/full_svm_prediction.csv"
+    # path = r"D:/PEAV/AssaultVerdictsParameterExtraction/db_csv_files/just tagged sentences.csv"
     tagged_db = pd.read_csv(path,header= 0, na_values='')
-    tagged_db = tagged_db.iloc[:,0:6]
+    tagged_db = tagged_db.loc[tagged_db["does number appear"] == True]
+    # tagged_db = tagged_db.iloc[:,0:6]
     tagged_db = adding_RB_pred_to_db(tagged_db)
+    subset_of_tagged_correct(tagged_db)
     tagged_db.to_csv('db_csv_files/DB with RB.csv', encoding= 'utf-8')
     classic_f1(tagged_db)
     check_per_verdict(tagged_db)

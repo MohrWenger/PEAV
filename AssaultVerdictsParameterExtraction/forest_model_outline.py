@@ -83,7 +83,8 @@ def cross_validation(db, tag_name, weight, test=True, soft_max = True):
     recalls = []
     precisions = []
     f1_score = []
-
+    ones = pd.DataFrame()
+    after_max = pd.DataFrame(columns= [SENTENCE])
     for chunk in cross_chunks:
         temp_test = db.loc[db[FILE_NAME].isin(chunk)]
         temp_train = db.loc[~db[FILE_NAME].isin(chunk)]
@@ -101,19 +102,26 @@ def cross_validation(db, tag_name, weight, test=True, soft_max = True):
         predicted_results, probabilities = predict_forest(x, trained_model)
         goal_labels = y.to_numpy()
         original_indices = y.index.to_numpy()
-        rec, prec, f1, ones = check_prediction(predicted_results, goal_labels, weight, tag_name, original_indices, db, probabilities,with_ones= True)
-        if soft_max:
-            # ones = smaller_sentence_pool(predicted_results, tag_name, original_indices, db, probabilities)
-            after_max, tn, fn = apply_argmax(ones)
-            true_negative = tn
-            false_negative = fn
-            rec, prec,f1 = evaluate_prediction(after_max, weight,true_negative, false_negative)
-            # rec, prec, f1 = check_prediction(after_max[PREDICTED_TAG], after_max[ORIGIN_TAG], weight, tag_name, original_indices, db,
+        rec, prec, f1, ones = check_prediction(predicted_results, goal_labels, weight, tag_name, original_indices, db,
+                                               probabilities, ones, with_ones=True)
+        if not soft_max:
+            recalls.append(rec)
+            precisions.append(prec)
+            f1_score.append(f1)
+
+    if soft_max:
+        # ones = smaller_sentence_pool(predicted_results, tag_name, original_indices, db, probabilities)
+        after_max, tn , fn = apply_argmax(ones, after_max, db)
+        rec, prec, f1 = evaluate_prediction(after_max, weight, tn, fn)
+        # rec, prec, f1 = check_prediction(after_max[PREDICTED_TAG], after_max[ORIGIN_TAG], weight, tag_name, original_indices, db,
 
         recalls.append(rec)
         precisions.append(prec)
         f1_score.append(f1)
-    print("for 10 cross_validation: recall = ",np.mean(recalls)," precision = ", np.mean(precisions)," and f1 = ", np.mean(f1_score))
+    ones.to_csv("full_rf_prediction.csv", encoding="utf-8")
+    print("for 10 cross_validation: recall = ", np.mean(recalls), " precision = ", np.mean(precisions),
+          " and f1 = ", np.mean(f1_score))
+
 
 def train_func(x_db, tag, weight):
     temp_db = x_db.loc[:, x_db.columns != SENTENCE]
@@ -157,22 +165,23 @@ def evaluate_prediction(after_max, weights, true_negative, false_negative):
 def calc_F1(true_positive, true_negative, false_negative, false_positive):
     return true_positive / (true_positive + 0.5 * (false_positive + false_negative))
 
-def apply_argmax(ones):
+def apply_argmax(ones, after_max, db):
     true_negatives = 0
     false_negatives = 0
     files = np.unique(ones[FILE_NAME])
-    after_max = pd.DataFrame(columns= [SENTENCE])
+
     for f in files:
         temp = ones.loc[ones[FILE_NAME] == f]
         if any(temp[CONTAINS_NUMBER]):
             temp = temp.loc[temp[CONTAINS_NUMBER] == True]
-        #TODO - apply the actual argmax ... This is now by file names
         max = temp[PROBA_VAL].argmax()
 
         s_line = temp.iloc[max]
-        # temp.drop(max)
-        true_negatives += len(temp[ORIGIN_TAG] == 0)
-        false_negatives += len(temp[ORIGIN_TAG] == 1)
+        sentence = s_line[SENTENCE]
+        tn = db.loc[((db[FILE_NAME] == f)& (db[TAG_COL] == 0) & db[SENTENCE] != sentence)]
+        fn = db.loc[((db[FILE_NAME] == f)& (db[TAG_COL] == 1)&(db[SENTENCE]!= sentence))]
+        true_negatives += len(tn)
+        false_negatives += len(fn)
         # add_line(after_max, max, ORIGIN_TAG,1,temp,PROBA_VAL)
         after_max = after_max.append(dict(s_line), ignore_index= True)
 
@@ -182,13 +191,13 @@ def apply_argmax(ones):
 
 
 
-def check_prediction(predicted_results, goal_labels, weights, tag_name, X, df, probabilities, with_ones = False):
+def check_prediction(predicted_results, goal_labels, weights, tag_name, X, df, probabilities, ones_db, with_ones = False):
     count_same = 0
     true_positive = 0
     true_negative = 0
     false_negative = 0
     false_positive = 0
-    ones = pd.DataFrame()
+    ones = ones_db
     for i in range(len(predicted_results)):
         if predicted_results[i] == goal_labels[i]:
             count_same += 1
@@ -209,7 +218,7 @@ def check_prediction(predicted_results, goal_labels, weights, tag_name, X, df, p
 
     recall = true_positive / sum(goal_labels)
     percision = (true_positive * weights) / (true_positive * weights + false_positive)
-    f1 = calc_F1(true_positive * weights, true_negative, false_negative * weights, false_positive)
+    f1 = 2*(percision*recall)/(percision + recall)
     print("sample size: ", len(goal_labels))
     print("how many ones expected:", sum(goal_labels))
     print("how many ones predicted: ", sum(predicted_results))
@@ -222,6 +231,7 @@ def check_prediction(predicted_results, goal_labels, weights, tag_name, X, df, p
         return recall, percision, f1, ones
 
     return recall, percision, f1
+
 
 
 #### visualization ####
@@ -302,7 +312,8 @@ def remove_irrelevant_sentences(df):
 
 
 if __name__ == "__main__":
-    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\DB of 27.6.csv"
+    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07.csv"
+    # path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\DB of 27.6.csv"
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
     # path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
     db_initial = pd.read_csv(path, header=0, na_values='')
@@ -313,4 +324,4 @@ if __name__ == "__main__":
     tag = db_filtered[TAG_COL]
     # compute_PCA(db_filtered)
     # vizualize(db_filtered)
-    cross_validation(db_filtered, TAG_COL, 18, soft_max=True )
+    cross_validation(db_filtered, TAG_COL, 20, soft_max=False )

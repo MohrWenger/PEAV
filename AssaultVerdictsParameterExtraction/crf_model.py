@@ -16,14 +16,16 @@ FILE_NAME = "filename"
 def add_relation_index(dict, relation):
     ret =  {relation+":" + str(key): val for key, val in dict.items()}
     return ret
-def new_arrangment(df, files):
+
+def new_arrangment(df, files, tagged = True):
     df_for_crf = []
     labels_for_crf = []
 
     for f in files:
         temp = df.loc[df[FILE_NAME] == f]
-        labels = temp[TAG_COL]
-        temp = temp.loc[:, temp.columns != TAG_COL]
+        if tagged:
+            labels = temp[TAG_COL]
+            temp = temp.loc[:, temp.columns != TAG_COL]
 
         as_dict = temp.to_dict('records')
         length = len(as_dict)
@@ -31,19 +33,22 @@ def new_arrangment(df, files):
         for i in range(length):
             line_dict = as_dict[i]
             if i > 0:
-                pass
                 line_dict.update(add_relation_index(as_dict[i-1], "-1"))
+            if i > 1:
+                pass
+                # line_dict.update(add_relation_index(as_dict[i-1], "-2"))
                 # line_dict['postag'] = labels[i-1]
-            else:
+            elif i == 0:
                 line_dict['BOS'] = True
             if i < length - 1:
-                pass
                 line_dict.update(add_relation_index(as_dict[i+1], "+1"))
-            else:
+            if i < length - 2:
+                line_dict.update(add_relation_index(as_dict[i+2], "+2"))
+            elif i == length - 1:
                 line_dict['EOS'] = True
             file_dict.append(line_dict)
-
-        labels_for_crf.append([str(x) for x in labels])
+        if tagged:
+            labels_for_crf.append([str(x) for x in labels])
         df_for_crf.append(file_dict)
 
     return df_for_crf, labels_for_crf
@@ -130,6 +135,7 @@ def using_crfsuite(db, tag, tag_name, df, test = True):
     recalls = []
     precisions = []
     f1_score = []
+    ones = pd.DataFrame()
 
     for chunk in cross_chunks:
         test_db = temp_db.loc[temp_db[FILE_NAME].isin(chunk)]
@@ -142,7 +148,7 @@ def using_crfsuite(db, tag, tag_name, df, test = True):
             algorithm='lbfgs',
             c1=0.1,
             c2=0.6,
-            max_iterations=100,
+            max_iterations=1000,
             all_possible_transitions=True,
             all_possible_states = True
         )
@@ -165,7 +171,6 @@ def using_crfsuite(db, tag, tag_name, df, test = True):
         print("labels = ", labels)
         y_pred = crf.predict(x)
         counter = 0
-        ones = pd.DataFrame
         for i, lab in enumerate(y):
             lab = np.array(lab)
             if '1' in lab:
@@ -174,18 +179,20 @@ def using_crfsuite(db, tag, tag_name, df, test = True):
                 counter += int(y_pred[i][int(correct)])
             else:
                 print("goal had no punisment for this one")
-        print_sent_ones(y, y_pred, x, file_name_dict, df)
-        # print("recal: ", counter/len(y))
+        ones = print_sent_ones(y_pred, x, file_name_dict, df, ones)
+        print("recal: ", counter/len(y))
         # print(metrics.flat_f1_score(y, y_pred,
         #                       average='weighted', labels=labels))
         # check_prediction(predicted_results, goal_labels, tag_name,original_indices, df)
+    ones.to_csv("ones_from_crf.csv", encoding="utf-8")
 
-def print_sent_ones(prediction, goals, x_df, file_name_list, main_df):
+def print_sent_ones( prediction, x_df, file_name_list, main_df, ones,tagged = True):
     file_names = {}
 
     for i, pred in enumerate(prediction):
         for j, l in enumerate(pred):
             if l == '1':
+                # name = x_df[i][j]
                 name = x_df[i][j][FILE_NAME]
                 if name in file_names.keys():
                     file_names[name].append(j)
@@ -194,7 +201,7 @@ def print_sent_ones(prediction, goals, x_df, file_name_list, main_df):
                     file_names[name].append(j)
 
     print(file_names)
-    ones_db = pd.DataFrame()
+    ones_db = ones
     corrects = 0
     for f_num in file_names.keys():
         name = file_name_list[int(f_num)]
@@ -211,7 +218,8 @@ def print_sent_ones(prediction, goals, x_df, file_name_list, main_df):
             ones_db = pd.concat([ones_db, add])
     print(np.unique(file_names))
     print("recall = ", corrects/len(file_names))
-    ones_db.to_csv("ones_from_crf.csv", encoding="utf-8")
+    ones_db.to_csv("ones_from_crf_small.csv", encoding="utf-8")
+    return ones_db
 
 def check_prediction(predicted_results, goal_labels,tag_name ,X, df):
 
@@ -253,12 +261,15 @@ def calc_F1 (true_positive, true_negative, false_negative, false_positive):
     return true_positive/(true_positive+0.5*(false_positive+false_negative))
 
 if __name__ == "__main__":
-    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\maasar only less features 27.06.csv"
+    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07.csv"
     # path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\DB of 27.6.csv"
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
     # path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
     db_initial = pd.read_csv(path, header=0, na_values='')
     db_filtered = db_initial.set_index(np.arange(len(db_initial)))
+    # db_filtered = db_initial.iloc[:,:5]
+    # db_filtered = db_initial.iloc[:,:15]
+    db_filtered = db_initial.loc[:,db_filtered.columns != TAG_PROB]
     x_db = db_filtered.loc[:, db_filtered.columns != TAG_COL]
     x_db = x_db.loc[:, x_db.columns != TAG_COL]
     tag = db_filtered[TAG_COL]

@@ -2,7 +2,7 @@
 # import AssaultVerdictsParameterExtraction.validate
 from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, recall_score
 from sklearn.feature_extraction import DictVectorizer
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 from sklearn.decomposition import SparsePCA
 from sklearn.decomposition import PCA
+import joblib
 
 # import seaborn as sns
 SENTENCE = "sentence"
@@ -35,21 +36,27 @@ def weights_graphed(coef, db):
     plt.show()
 
 
-def smaller_sentence_pool(predicted, tag_name, original_indices, db, probabilities):
+def smaller_sentence_pool(predicted, tag_name, original_indices, db, probabilities, tagged = True):
     ones = pd.DataFrame()
     for i in range(len(predicted)):
-        ones = add_line(ones, original_indices[i], tag_name, predicted[i], db, probabilities[i][1])
+        ones = add_line(ones, original_indices[i], tag_name, predicted[i], db, probabilities[i][1], tagged)
     ones.to_csv("svm_sentences.csv", encoding="utf-8")
     return ones
 
 
-def add_line(new_db, line, tag_name, prediction, db, probabilities):
+def add_line(new_db, line, tag_name, prediction, db, probabilities, tagged = True):
     sentence = db.sentence[line]
     line = db.iloc[line]
     if prediction == 1:
-        add = pd.DataFrame(
-            [[line[FILE_NAME], sentence, line[tag_name], prediction, probabilities, line[CONTAINS_NUMBER]]],
-            columns=[FILE_NAME, SENTENCE, ORIGIN_TAG, PREDICTED_TAG, PROBA_VAL, CONTAINS_NUMBER])
+        if tagged:
+            add = pd.DataFrame(
+                [[line[FILE_NAME], sentence, line[tag_name], prediction, probabilities, line[CONTAINS_NUMBER]]],
+                columns=[FILE_NAME, SENTENCE, ORIGIN_TAG, PREDICTED_TAG, PROBA_VAL, CONTAINS_NUMBER])
+        else:
+            add = pd.DataFrame(
+                [[line[FILE_NAME], sentence, prediction, probabilities, line[CONTAINS_NUMBER]]],
+                columns=[FILE_NAME, SENTENCE, PREDICTED_TAG, PROBA_VAL, CONTAINS_NUMBER])
+
         new_db = pd.concat([new_db, add])
     return new_db
 
@@ -83,8 +90,8 @@ def cross_validation(db, tag_name, weight, test=True, soft_max = True):
     print("chunk num = ", len(cross_chunks))
     recalls = []
     precisions = []
-    f1_score = []
-
+    f1_scores = []
+    ones = pd.DataFrame()
     for chunk in cross_chunks:
         temp_test = db.loc[db[FILE_NAME].isin(chunk)]
         temp_train = db.loc[~db[FILE_NAME].isin(chunk)]
@@ -102,19 +109,31 @@ def cross_validation(db, tag_name, weight, test=True, soft_max = True):
         predicted_results, probabilities = predict_svm(x, trained_model)
         goal_labels = y.to_numpy()
         original_indices = y.index.to_numpy()
-        rec, prec, f1, ones = check_prediction(predicted_results, goal_labels, weight, tag_name, original_indices, db, probabilities,with_ones= True)
-        if soft_max:
-            # ones = smaller_sentence_pool(predicted_results, tag_name, original_indices, db, probabilities)
-            after_max = apply_argmax(ones, after_max)
-            true_negative = 120
-            false_negative = 15
-            rec, prec,f1 = evaluate_prediction(after_max, weight,true_negative, false_negative)
-            # rec, prec, f1 = check_prediction(after_max[PREDICTED_TAG], after_max[ORIGIN_TAG], weight, tag_name, original_indices, db,
+        rec, prec, f1, ones = check_prediction(predicted_results, goal_labels, weight, tag_name, original_indices, db,
+                                               probabilities,ones,with_ones= True)
+        if not soft_max:
+            # m_recall = recall_score(goal_labels, predicted_results,
+            #                         sample_weight=weight)
+            # m_f1 = f1_score(goal_labels, predicted_results, sample_weight=weight)
+            # print("m_ recal = ", m_recall)
+            # print("m_ f1 = ", m_f1)
+            recalls.append(rec)
+            precisions.append(prec)
+            f1_scores.append(f1)
+
+    if soft_max:
+        # ones = smaller_sentence_pool(predicted_results, tag_name, original_indices, db, probabilities)
+        after_max, tn , fn = apply_argmax(ones, after_max, db)
+
+        rec, prec,f1 = evaluate_prediction(after_max, weight,tn, fn)
+        # rec, prec, f1 = check_prediction(after_max[PREDICTED_TAG], after_max[ORIGIN_TAG], weight, tag_name, original_indices, db,
 
         recalls.append(rec)
         precisions.append(prec)
-        f1_score.append(f1)
-    print("for 10 cross_validation: recall = ",np.mean(recalls)," precision = ", np.mean(precisions)," and f1 = ", np.mean(f1_score))
+        f1_scores.append(f1)
+    ones['length sentence'] = 0
+    ones.to_csv("full_svm_prediction.csv",encoding= "utf-8")
+    print("for 10 cross_validation: recall = ",np.mean(recalls)," precision = ", np.mean(precisions)," and f1 = ", np.mean(f1_scores))
 
 def train_func(x_db, tag, weight):
     temp_db = x_db.loc[:, x_db.columns != SENTENCE]
@@ -126,6 +145,7 @@ def train_func(x_db, tag, weight):
 
     clf = SVC(probability=True)  # kernel='linear')#, C=100)
     clf.fit(x_train, y_train, sample_weight=weights)
+    joblib.dump(clf, 'D:/PEAV/AssaultVerdictsParameterExtraction/SVM_trained_model.pkl')
 
     return clf
 
@@ -140,11 +160,13 @@ def predict_svm(x,  clf):
 def evaluate_prediction(after_max, weights, true_negative, false_negative):
     predicted_results = after_max[PREDICTED_TAG]
     true_positive = sum(after_max[ORIGIN_TAG])
-    all_positive = len(after_max[ORIGIN_TAG])
+    all_positive = len(after_max[ORIGIN_TAG]) #assuming each file has 1 corresct
     false_positive = all_positive - true_positive
-    recall = true_positive / all_positive
+
+    recall = true_positive * weights / all_positive
     percision = (true_positive * weights) / (true_positive * weights + false_positive)
-    f1 = calc_F1(true_positive * weights, true_negative, false_negative * weights, false_positive)
+    f1 = 2*(percision*recall)/(percision + recall)
+    # f1 = calc_F1(true_positive * weights, true_negative, false_negative * weights, false_positive)
     print("sample size: ", all_positive)
     print("how many ones expected:", all_positive)
     print("how many ones predicted: ", sum(predicted_results))
@@ -158,8 +180,13 @@ def evaluate_prediction(after_max, weights, true_negative, false_negative):
 def calc_F1(true_positive, true_negative, false_negative, false_positive):
     return true_positive / (true_positive + 0.5 * (false_positive + false_negative))
 
-def apply_argmax(ones,after_max):
+def apply_argmax(ones, after_max, db):
+    true_negatives = 0
+    false_negatives = 0
     files = np.unique(ones[FILE_NAME])
+    counter_fn = 0
+    counter_tp = 0
+
     for f in files:
         temp = ones.loc[ones[FILE_NAME] == f]
         if any(temp[CONTAINS_NUMBER]):
@@ -167,22 +194,32 @@ def apply_argmax(ones,after_max):
         max = temp[PROBA_VAL].argmax()
 
         s_line = temp.iloc[max]
+        sentence = s_line[SENTENCE]
+        if s_line[ORIGIN_TAG] == 1:
+            counter_tp +=1
+        tn = db.loc[((db[FILE_NAME] == f)& (db[TAG_COL] == 0) & (db[SENTENCE] != sentence))]
+        fn = db.loc[((db[FILE_NAME] == f)& (db[TAG_COL] == 1)&(db[SENTENCE]!= sentence))]
+        true_negatives += len(tn)
+        false_negatives += len(fn)
+        if len(fn) > 1:
+            counter_fn += 1
+            print("for file ", f, " fn > 1")
         # add_line(after_max, max, ORIGIN_TAG,1,temp,PROBA_VAL)
         after_max = after_max.append(dict(s_line), ignore_index= True)
-
-        # print(max)
+    print("fn counter:" ,counter_fn)
+    print("tp counter:" ,counter_tp)
     after_max.to_csv("arg_max_output.csv", encoding="utf-8")
-    return after_max
+    return after_max, true_negatives, false_negatives
 
 
 
-def check_prediction(predicted_results, goal_labels, weights, tag_name, X, df, probabilities, with_ones = False):
+def check_prediction(predicted_results, goal_labels, weights, tag_name, X, df, probabilities, ones_db, with_ones = False):
     count_same = 0
     true_positive = 0
     true_negative = 0
     false_negative = 0
     false_positive = 0
-    ones = pd.DataFrame()
+    ones = ones_db
     for i in range(len(predicted_results)):
         if predicted_results[i] == goal_labels[i]:
             count_same += 1
@@ -296,7 +333,8 @@ def remove_irrelevant_sentences(df):
 
 
 if __name__ == "__main__":
-    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\DB of 27.6.csv"
+    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07.csv"
+    # path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB_minimal 27.07.csv"
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
     # path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
     db_initial = pd.read_csv(path, header=0, na_values='')
@@ -304,7 +342,7 @@ if __name__ == "__main__":
     # db_filtered = remove_irrelevant_sentences(db_initial)
     x_db = db_filtered.loc[:, db_filtered.columns != TAG_COL]
     x_db = x_db.loc[:, x_db.columns != TAG_PROB]
-    tag = db_filtered[TAG_COL]
+    # tag = db_filtered[TAG_COL]
     # compute_PCA(db_filtered)
     # vizualize(db_filtered)
-    cross_validation(db_filtered, TAG_COL, 20, soft_max=True )
+    cross_validation(db_filtered, TAG_COL, 20, soft_max=False )
