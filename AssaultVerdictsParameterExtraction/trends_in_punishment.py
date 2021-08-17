@@ -60,34 +60,71 @@ def values_by_col(db, col):
     number_of_cases_hist =[]
     for i,val in enumerate(values):
         temp_db = db.loc[db[col]==val]
-        times = [float(x) for x in temp_db[VOTED_TIME].to_list()]
+        times = [int(x) for x in temp_db[VOTED_TIME].to_list()]
         median_time.append(np.median(times))
         print("For ",val," there are ",len(temp_db),"cases")
         number_of_cases_hist.append(len(temp_db))
-    plt.title("The Sentenced Imprisonment By Years\n(1178) cases extracted by RB")
-    plt.plot(values, median_time)
-    plt.show()
 
-    plt.title("The Number of Cases by Years")
-    plt.bar(values,number_of_cases_hist)
-    # plt.xticks( values)
-    plt.show()
+    number_of_cases_hist = np.array(number_of_cases_hist)
+
+    if col == "years":
+        fig, ax = plt.subplots(figsize=(10, 10 * 2 / 3))
+        # plt.title("The Sentenced Imprisonment By Years\n(1178) cases extracted by RB")
+        plt.plot(values[number_of_cases_hist > 20], median_time[number_of_cases_hist > 20])
+        plt.show()
+        #
+        # fig.suptitle("Number of Cases By Years\n",fontsize = 25)
+        ax.spines['top'].set_visible(False)
+        ax.spines['bottom'].set_linewidth(3)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_linewidth(3)
+        plt.xlabel("Years", fontsize = 18)
+        plt.ylabel("Number of Cases", fontsize = 18)
+        plt.bar(values,number_of_cases_hist)
+        plt.xticks( fontsize = 15) #להוסיף עוד בציר X
+        plt.yticks( fontsize = 15) #להוסיף עוד בציר X
+        plt.show()
+
+    elif col == VOTED_TIME:
+        fig, ax = plt.subplots(figsize=(10, 10 * 2 / 3))
+
+        # fig.suptitle("Histogram of Months For Actual Imprisonment\n"
+        #              "Based on performance of the rule based model\n\n", fontsize=22)
+        ax.spines['top'].set_visible(False)
+        ax.spines['bottom'].set_linewidth(2)
+        ax.spines['right'].set_visible(False)
+        ax.spines['left'].set_linewidth(2)
+        plt.xlabel("Months Sentenced", fontsize=18)
+        plt.ylabel("Number of Cases", fontsize=18)
+        plt.hist(number_of_cases_hist,bins=30) #Widen the bins
+        plt.plot(np.repeat(12,30),np.arange(30), color = 'black', linestyle = "--") #Widen the bins
+        plt.xticks( fontsize=15)  # להוסיף עוד בציר X
+        plt.yticks(fontsize=15)  # להוסיף עוד בציר X
+        plt.ylim(0,26)
+        plt.show()
+    # plt.title("Histogram of Months For Actual Imprisonment\nBased on performance of the rule based model")
+    # plt.hist(number_of_cases_hist,bins=30) #Widen the bins
+    # plt.xlabel("Months Sentenced")
+    # plt.ylabel("Number of Cases")
+    # plt.show()
 
 if __name__ == "__main__":
-    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\verdict_penalty.csv"
-    db = pd.read_csv(path, encoding='utf-8')
-    db = db.loc[db[SENTENCE] != "not found"]
-    time_db = extracted_time_db(db)
-    times = time_db[VOTED_TIME]
-    add_years(time_db)
+    # path = "verdict_penalty.csv"
+    # path = "pipline on test set.csv"
+    # db = pd.read_csv(path, encoding='utf-8')
+    # db = db.loc[db[SENTENCE] != "not found"]
+    # time_db = extracted_time_db(db)
+    # times = time_db[VOTED_TIME]
+    # add_years(time_db)
 
     path = r"D:\PEAV\AssaultVerdictsParameterExtraction\times and years.csv"
     db = pd.read_csv(path,na_values = '', encoding='utf-8')
     db = db.loc[db["years"] != -1]
     db = db.loc[db[VOTED_TIME] != "-1.0"]
-    db = db.loc[db[VOTED_TIME] != "4140.0"]
+    db = db.loc[db[VOTED_TIME] != 4140.0]
     print("len db for years = ", len(db))
-    values_by_col(db, "years")
+    values_by_col(db, VOTED_TIME)
+    # values_by_col(db, "years")
     times = [float(x) for x in db[VOTED_TIME].to_list()]
     for t in times:
         if t > 500:

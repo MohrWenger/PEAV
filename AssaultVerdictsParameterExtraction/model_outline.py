@@ -52,10 +52,10 @@ def add_line(new_db, line, tag_name, prediction, db, probabilities, tagged = Tru
             add = pd.DataFrame(
                 [[line[FILE_NAME], sentence, line[tag_name], prediction, probabilities, line[CONTAINS_NUMBER]]],
                 columns=[FILE_NAME, SENTENCE, ORIGIN_TAG, PREDICTED_TAG, PROBA_VAL, CONTAINS_NUMBER])
-        else:
-            add = pd.DataFrame(
-                [[line[FILE_NAME], sentence, prediction, probabilities, line[CONTAINS_NUMBER]]],
-                columns=[FILE_NAME, SENTENCE, PREDICTED_TAG, PROBA_VAL, CONTAINS_NUMBER])
+        # else:
+        #     add = pd.DataFrame(
+        #         [[line[FILE_NAME], sentence, prediction, probabilities, line[CONTAINS_NUMBER]]],
+        #         columns=[FILE_NAME, SENTENCE, PREDICTED_TAG, PROBA_VAL, CONTAINS_NUMBER])
 
         new_db = pd.concat([new_db, add])
     return new_db
@@ -163,7 +163,7 @@ def evaluate_prediction(after_max, weights, true_negative, false_negative):
     all_positive = len(after_max[ORIGIN_TAG]) #assuming each file has 1 corresct
     false_positive = all_positive - true_positive
 
-    recall = true_positive * weights / all_positive
+    recall = true_positive / all_positive
     percision = (true_positive * weights) / (true_positive * weights + false_positive)
     f1 = 2*(percision*recall)/(percision + recall)
     # f1 = calc_F1(true_positive * weights, true_negative, false_negative * weights, false_positive)
@@ -180,7 +180,7 @@ def evaluate_prediction(after_max, weights, true_negative, false_negative):
 def calc_F1(true_positive, true_negative, false_negative, false_positive):
     return true_positive / (true_positive + 0.5 * (false_positive + false_negative))
 
-def apply_argmax(ones, after_max, db):
+def apply_argmax(ones, after_max, db, evaluate = True):
     true_negatives = 0
     false_negatives = 0
     files = np.unique(ones[FILE_NAME])
@@ -195,21 +195,24 @@ def apply_argmax(ones, after_max, db):
 
         s_line = temp.iloc[max]
         sentence = s_line[SENTENCE]
-        if s_line[ORIGIN_TAG] == 1:
-            counter_tp +=1
-        tn = db.loc[((db[FILE_NAME] == f)& (db[TAG_COL] == 0) & (db[SENTENCE] != sentence))]
-        fn = db.loc[((db[FILE_NAME] == f)& (db[TAG_COL] == 1)&(db[SENTENCE]!= sentence))]
-        true_negatives += len(tn)
-        false_negatives += len(fn)
-        if len(fn) > 1:
-            counter_fn += 1
-            print("for file ", f, " fn > 1")
-        # add_line(after_max, max, ORIGIN_TAG,1,temp,PROBA_VAL)
+        if evaluate:
+            if s_line[ORIGIN_TAG] == 1:
+                counter_tp +=1
+            tn = db.loc[((db[FILE_NAME] == f)& (db[TAG_COL] == 0) & (db[SENTENCE] != sentence))]
+            fn = db.loc[((db[FILE_NAME] == f)& (db[TAG_COL] == 1)&(db[SENTENCE]!= sentence))]
+            true_negatives += len(tn)
+            false_negatives += len(fn)
+            if len(fn) > 1:
+                counter_fn += 1
+                print("for file ", f, " fn > 1")
+            # add_line(after_max, max, ORIGIN_TAG,1,temp,PROBA_VAL)
         after_max = after_max.append(dict(s_line), ignore_index= True)
     print("fn counter:" ,counter_fn)
     print("tp counter:" ,counter_tp)
     after_max.to_csv("arg_max_output.csv", encoding="utf-8")
-    return after_max, true_negatives, false_negatives
+    if evaluate:
+        return after_max, true_negatives, false_negatives
+    return after_max
 
 
 
@@ -333,16 +336,18 @@ def remove_irrelevant_sentences(df):
 
 
 if __name__ == "__main__":
-    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07.csv"
-    # path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB_minimal 27.07.csv"
+    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07 with RB pred.csv"
+    # path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07.csv"
+    # path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\DB with RB.csv"
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
-    # path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
     db_initial = pd.read_csv(path, header=0, na_values='')
     db_filtered = db_initial
     # db_filtered = remove_irrelevant_sentences(db_initial)
     x_db = db_filtered.loc[:, db_filtered.columns != TAG_COL]
     x_db = x_db.loc[:, x_db.columns != TAG_PROB]
+    # RB_PRED_COL = "RB prediction"
+    # x_db[RB_PRED_COL] = 1000 * RB_PRED_COL
     # tag = db_filtered[TAG_COL]
     # compute_PCA(db_filtered)
     # vizualize(db_filtered)
-    cross_validation(db_filtered, TAG_COL, 20, soft_max=False )
+    cross_validation(db_filtered, TAG_COL, 20, soft_max=True )

@@ -12,7 +12,8 @@ OUR_CASENAME = "case_num"
 TEST_CASENAME = "Case_Name"
 FILE_NAME = "filename"
 
-PRED_MAIN_SENTENCE = "PENALTY_SENTENCE"
+PRED_MAIN_SENTENCE = "sentence"
+# PRED_MAIN_SENTENCE = "PENALTY_SENTENCE"
 TEST_MAIN_SENTENCE = "עונש בפועל (המשפט הרלוונטי מהטקסט)"
 
 PRED_TIME = "VOTED TIME"
@@ -195,8 +196,8 @@ if __name__ == "__main__":
 
     validated_df = pd.read_csv("db_csv_files/Test Set - PEAV - Sheet1.csv", error_bad_lines=False)
     validated_df.sort_values(by=[TEST_CASENAME])
-    # our_output = pd.read_csv("pipline on test set.csv", error_bad_lines=False)
-    our_output = pd.read_csv(r"D:\PEAV\AssaultVerdictsParameterExtraction\verdict_penalty.csv", error_bad_lines=False)
+    our_output = pd.read_csv("pipline on test set.csv", error_bad_lines=False)
+    # our_output = pd.read_csv(r"D:\PEAV\AssaultVerdictsParameterExtraction\verdict_penalty.csv", error_bad_lines=False)
     # our_output = pd.read_csv(r"D:\PEAV\AssaultVerdictsParameterExtraction\verdict_penalty.csv", error_bad_lines=False)
     our_output.sort_values(by=[FILE_NAME])
     # relevant_cases.sort()

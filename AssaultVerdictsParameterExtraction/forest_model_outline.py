@@ -312,6 +312,7 @@ def remove_irrelevant_sentences(df):
 
 
 if __name__ == "__main__":
+    # path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07 with RB pred.csv"
     path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07.csv"
     # path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\DB of 27.6.csv"
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
@@ -324,4 +325,4 @@ if __name__ == "__main__":
     tag = db_filtered[TAG_COL]
     # compute_PCA(db_filtered)
     # vizualize(db_filtered)
-    cross_validation(db_filtered, TAG_COL, 20, soft_max=False )
+    cross_validation(db_filtered, TAG_COL, 20, soft_max=True )

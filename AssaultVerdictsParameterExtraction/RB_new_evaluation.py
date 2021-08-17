@@ -7,7 +7,9 @@ FILE_NAME = "filename"
 SENTENCE = "sentence"
 SENTENCE_LEN = "length sentence"
 RB_PRED_COL = "RB prediction"
-TAG_COL = "is correct sentence"
+# TAG_COL = "is correct sentence"
+TAG_COL = "does sentence include punishment"
+# TAG_COL = "original tag"
 def calculate_sentences_len(sentences):
     sentences_len = []
     for s in sentences:
@@ -19,8 +21,8 @@ def adding_RB_pred_to_db (tagged_db):
     verdicts_included = np.unique(tagged_db[FILE_NAME])
 
     for ver in verdicts_included:
-        if ver == "s02004853-273.txt":
-            print('bp')
+        # if ver == "s02004853-273.txt":
+        #     print('bp')
         temp_db = tagged_db.loc[tagged_db[FILE_NAME] == ver]
         sentences_len = temp_db[SENTENCE_LEN].tolist()
         sentences = temp_db[SENTENCE].tolist()
@@ -29,11 +31,12 @@ def adding_RB_pred_to_db (tagged_db):
         params = penalty_extraction.extract_penalty_params(sentences, sentences_len )
         chosen_sentence = params[1]
         # print("pred = ", chosen_sentence)
-        row = tagged_db.index[(tagged_db[FILE_NAME] == ver) & (tagged_db[SENTENCE] == chosen_sentence)] # The row with the chosen sentence
-        # tagged_db[tagged_db.index == row[0]][RB_PRED_COL] = 1
-        print("ver = ", ver)
+        if "not found" not in chosen_sentence:
+            row = tagged_db.index[(tagged_db[FILE_NAME] == ver) & (tagged_db[SENTENCE] == chosen_sentence)] # The row with the chosen sentence
+            # tagged_db[tagged_db.index == row[0]][RB_PRED_COL] = 1
+            print("ver = ", ver)
 
-        tagged_db.at[row[0],RB_PRED_COL] = 1
+            tagged_db.at[row[0],RB_PRED_COL] = 1
 
         # print("sanity check: ",chosen_sentence == tagged_db.iloc[row[0]][SENTENCE])
         # print()
@@ -92,10 +95,12 @@ def subset_of_tagged_correct(db):
     rb_decision.to_csv("db_csv_files/RB_prediction_db.csv", encoding = 'utf-8')
 
 if __name__ == "__main__":
-    path = r"D:/PEAV/AssaultVerdictsParameterExtraction/full_svm_prediction.csv"
+    # path = r"D:/PEAV/AssaultVerdictsParameterExtraction/full_svm_prediction.csv"
+    path = r"D:/PEAV/AssaultVerdictsParameterExtraction/db_csv_files/feature_DB 28.07.csv"
     # path = r"D:/PEAV/AssaultVerdictsParameterExtraction/db_csv_files/just tagged sentences.csv"
     tagged_db = pd.read_csv(path,header= 0, na_values='')
-    tagged_db = tagged_db.loc[tagged_db["does number appear"] == True]
+    print(len(tagged_db))
+    # tagged_db = tagged_db.loc[tagged_db["does number appear"] == True]
     # tagged_db = tagged_db.iloc[:,0:6]
     tagged_db = adding_RB_pred_to_db(tagged_db)
     subset_of_tagged_correct(tagged_db)

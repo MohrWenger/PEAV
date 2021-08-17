@@ -552,8 +552,8 @@ if __name__ == "__main__":
     with open('verdict_list.txt') as json_file:
         verdicts_list = json.load(json_file)
 
-    # predicted = pd.read_csv("arg_max_output.csv", error_bad_lines=False)
+    predicted = pd.read_csv("arg_max_output.csv", error_bad_lines=False)
     # predicted = pd.read_csv("db_csv_files/RB_prediction_db.csv", error_bad_lines=False)
-    # from_sentence_list(predicted[FILE_NAME], predicted[SENTENCE])
-    fromVerdictsToDB(2)
-    # pipline_on_test_set()
+    from_sentence_list(predicted[FILE_NAME], predicted[SENTENCE])
+    # fromVerdictsToDB(0)
+    pipline_on_test_set()

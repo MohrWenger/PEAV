@@ -37,7 +37,7 @@ def run_crf():
 
 def run_SVM():
     model_path = 'D:/PEAV/AssaultVerdictsParameterExtraction/SVM_trained_model.pkl'
-    # file_path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\maasar only less features 27.06.csv"
+    file_path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07.csv"
     file_path = r"feature_DB.csv"
 
     model = joblib.load(model_path)
@@ -64,7 +64,9 @@ def run_SVM():
     y_preds = model.predict(temp_db)
     y_proba = model.predict_proba(temp_db)
     ones = svm_model.smaller_sentence_pool(y_preds,TAG_PROB, original_indices,db_initial, y_proba, False)
-    svm_model.apply_argmax(ones, pd.DataFrame())
+    ones['length sentence'] = 0
+    ones.to_csv("full_svm_prediction_trained.csv",encoding= "utf-8")
+    svm_model.apply_argmax(ones, pd.DataFrame(),db, evaluate= False)
 
 if __name__ == "__main__":
-    run_crf()
+    run_SVM()
