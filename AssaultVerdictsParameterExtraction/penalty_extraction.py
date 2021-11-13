@@ -171,7 +171,6 @@ def vote_for_time(t, act_sent, t_units):
 
     return score
 
-
 def find_time_act(act_sent):
     """
     This function receives a sentence and extracts the actual jail time given.
@@ -208,7 +207,6 @@ def find_time_act(act_sent):
 
             # reg = '\b(?:'+t+'\W+(?:\w+\W+){0,'+str(dist)+'}?'+BAFOAL+'|'+BAFOAL+'\W+(?:\w+\W+){0,'+str(dist)+'}?'+t+')\b'
     return times_and_score, winner_time
-
 
 def replace_value_with_key(sentence):
     """
@@ -552,8 +550,8 @@ if __name__ == "__main__":
     with open('verdict_list.txt') as json_file:
         verdicts_list = json.load(json_file)
 
-    predicted = pd.read_csv("arg_max_output.csv", error_bad_lines=False)
-    # predicted = pd.read_csv("db_csv_files/RB_prediction_db.csv", error_bad_lines=False)
+    # predicted = pd.read_csv("arg_max_output.csv", error_bad_lines=False)
+    predicted = pd.read_csv("db_csv_files/RB_prediction_db.csv", error_bad_lines=False)
     from_sentence_list(predicted[FILE_NAME], predicted[SENTENCE])
     # fromVerdictsToDB(0)
-    pipline_on_test_set()
+    # pipline_on_test_set()

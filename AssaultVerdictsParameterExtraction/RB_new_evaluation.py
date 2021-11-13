@@ -96,7 +96,8 @@ def subset_of_tagged_correct(db):
 
 if __name__ == "__main__":
     # path = r"D:/PEAV/AssaultVerdictsParameterExtraction/full_svm_prediction.csv"
-    path = r"D:/PEAV/AssaultVerdictsParameterExtraction/db_csv_files/feature_DB 28.07.csv"
+    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07 with mini ratio tag.csv"
+    # path = r"D:/PEAV/AssaultVerdictsParameterExtraction/db_csv_files/feature_DB 28.07.csv"
     # path = r"D:/PEAV/AssaultVerdictsParameterExtraction/db_csv_files/just tagged sentences.csv"
     tagged_db = pd.read_csv(path,header= 0, na_values='')
     print(len(tagged_db))

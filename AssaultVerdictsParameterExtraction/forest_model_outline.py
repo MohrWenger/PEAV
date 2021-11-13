@@ -186,7 +186,7 @@ def apply_argmax(ones, after_max, db):
         after_max = after_max.append(dict(s_line), ignore_index= True)
 
         # print(max)
-    after_max.to_csv("arg_max_output.csv", encoding="utf-8")
+    after_max.to_csv("RF_arg_max_output.csv", encoding="utf-8")
     return after_max, true_negatives, false_negatives
 
 
@@ -312,8 +312,9 @@ def remove_irrelevant_sentences(df):
 
 
 if __name__ == "__main__":
+    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07 with mini ratio tag.csv"
     # path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07 with RB pred.csv"
-    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07.csv"
+    # path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07.csv"
     # path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\DB of 27.6.csv"
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
     # path = r"C:\Users\נועה וונגר\PycharmProjects\PEAV\AssaultVerdictsParameterExtraction\feature_DB - feature_DB (1).csv"
@@ -322,6 +323,7 @@ if __name__ == "__main__":
     # db_filtered = remove_irrelevant_sentences(db_initial)
     x_db = db_filtered.loc[:, db_filtered.columns != TAG_COL]
     x_db = x_db.loc[:, x_db.columns != TAG_PROB]
+    x_db = x_db.loc[:, x_db.columns != "mini-ratzio"]
     tag = db_filtered[TAG_COL]
     # compute_PCA(db_filtered)
     # vizualize(db_filtered)

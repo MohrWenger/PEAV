@@ -85,17 +85,57 @@ def fleiss_kappa(M):
 
     # observed agreement
     P = (np.sum(M * M, axis=1) - n_annotators) / (n_annotators * (n_annotators - 1))
+    # print("observed agreement = ",P)
     Pbar = np.sum(P) / N  # add all observed agreement chances per item and divide by amount of items
-
+    # Pbar = P
     return round((Pbar - PbarE) / (1 - PbarE), 4)
+    # return (Pbar - PbarE) / (1 - PbarE)
+
+
+def cohen_kappa(ann1, ann2):
+    """Computes Cohen kappa for pair-wise annotators.
+    :param ann1: annotations provided by first annotator
+    :type ann1: list
+    :param ann2: annotations provided by second annotator
+    :type ann2: list
+    :rtype: float
+    :return: Cohen kappa statistic
+    """
+    count = 0
+    for an1, an2 in zip(ann1, ann2):
+        if an1 == an2:
+            count += 1
+    A = count / len(ann1)  # observed agreement A (Po)
+
+    uniq = set(ann1 + ann2)
+    E = 0  # expected agreement E (Pe)
+    for item in uniq:
+        cnt1 = ann1.count(item)
+        cnt2 = ann2.count(item)
+        count = ((cnt1 / len(ann1)) * (cnt2 / len(ann2)))
+        E += count
+
+    return round((A - E) / (1 - E), 4)
+
+def run_fleiss_k (db):
+    db = db.replace("Y", 1)
+    db = db.replace("N", 0)
+    db = db.replace("M", 2)
+    mat = db.to_numpy()
+    #
+    print(fleiss_kappa(mat))
+
+def run_inter_annotator_k(db):
+
+    # each two:
+    for i in range(5):
+        for j in range(i+1,5):
+            print("i,j = ",i,j)
+            print(cohen_kappa(db.iloc[:,i].tolist(),db.iloc[:,j].tolist()))
 
 if __name__ == "__main__":
+    # all_db_checks()
     manual_tags_path = "D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\mannual taggers by RK .csv"
     db = pd.read_csv(manual_tags_path,encoding='utf-8')
-    db = db.iloc[:,5:8]
-    db = db.replace("Y",1)
-    db = db.replace("N",0)
-    db = db.replace("M",2)
-    mat = db.to_numpy()
-
-    print(fleiss_kappa(mat))
+    # db = db.iloc[:, 5:8]
+    run_inter_annotator_k(db)

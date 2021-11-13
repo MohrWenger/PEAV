@@ -55,7 +55,7 @@ def loss_1_0(case_name_list, check_match_func, df, all_output, goal_output, rele
                 correct_rate += 1
     print(correct_rate)
     num_wrong = len(df.loc[df[PRED_TIME] == -1])
-    print("num wrong = ", num_wrong)
+    print("num not found = ", num_wrong)
     df = df.loc[df["Goal time"] != -1]
 
     print("Error (difference):",np.mean(df["Error (difference)"]))
@@ -64,7 +64,7 @@ def loss_1_0(case_name_list, check_match_func, df, all_output, goal_output, rele
     print("max: taged = ",np.max(df["Goal time"]), "and pred = ", np.max(df[PRED_TIME]))
     print("median: taged = ",np.nanmedian(df["Goal time"]), "and pred = ", np.nanmedian(df[PRED_TIME]))
     print(len(case_name_list))
-    print(correct_rate/(len(case_name_list) - num_wrong))
+    print("",correct_rate/(len(case_name_list) - num_wrong))
     # temp_df = df.mealoc[df["Error (difference)"] != "NO sentence"]
     # print(np.nanmean(np.array(temp_df["Error (difference)"])))
     # print(np.std(temp_df["Error (difference)"]))

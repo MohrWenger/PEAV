@@ -336,7 +336,8 @@ def remove_irrelevant_sentences(df):
 
 
 if __name__ == "__main__":
-    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07 with RB pred.csv"
+    path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07 with mini ratio tag.csv"
+    # path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07 with RB pred.csv"
     # path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\feature_DB 28.07.csv"
     # path = r"D:\PEAV\AssaultVerdictsParameterExtraction\db_csv_files\DB with RB.csv"
     # path = "/Users/tomkalir/Projects/PEAV/AssaultVerdictsParameterExtraction/feature_DB - feature_DB (1).csv"
@@ -345,6 +346,8 @@ if __name__ == "__main__":
     # db_filtered = remove_irrelevant_sentences(db_initial)
     x_db = db_filtered.loc[:, db_filtered.columns != TAG_COL]
     x_db = x_db.loc[:, x_db.columns != TAG_PROB]
+    x_db = x_db.loc[:, x_db.columns != "mini-ratzio"]
+    # x_db = x_db.loc[x_db["mini-ratzio"] != 1]
     # RB_PRED_COL = "RB prediction"
     # x_db[RB_PRED_COL] = 1000 * RB_PRED_COL
     # tag = db_filtered[TAG_COL]

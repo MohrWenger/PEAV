@@ -96,11 +96,19 @@ def values_by_col(db, col):
         ax.spines['left'].set_linewidth(2)
         plt.xlabel("Months Sentenced", fontsize=18)
         plt.ylabel("Number of Cases", fontsize=18)
-        plt.hist(number_of_cases_hist,bins=30) #Widen the bins
-        plt.plot(np.repeat(12,30),np.arange(30), color = 'black', linestyle = "--") #Widen the bins
-        plt.xticks( fontsize=15)  # להוסיף עוד בציר X
+        # plt.bar(values,number_of_cases_hist) #Widen the bins
+        hist = np.histogram(db[VOTED_TIME],bins=20)
+        # hist_smothed = np.histogram(db[VOTED_TIME],bins=10)
+        print(hist[1])
+        plt.hist(db[VOTED_TIME],bins=hist[1]+1) #Widen the bins
+        # plt.plot(hist[1][:20],hist[0])
+        print("number of values = ", len(values))
+        print("till 15:", np.sum(number_of_cases_hist[:16]) / np.sum(number_of_cases_hist))
+        print("Most common:", np.max(number_of_cases_hist))
+        # plt.plot(np.repeat(12,30),np.arange(30), color = 'black', linestyle = "--") #Widen the bins
+        plt.xticks( hist[1][::2], fontsize=15)  # להוסיף עוד בציר X
         plt.yticks(fontsize=15)  # להוסיף עוד בציר X
-        plt.ylim(0,26)
+        # plt.ylim(0,26)
         plt.show()
     # plt.title("Histogram of Months For Actual Imprisonment\nBased on performance of the rule based model")
     # plt.hist(number_of_cases_hist,bins=30) #Widen the bins
@@ -129,6 +137,7 @@ if __name__ == "__main__":
     for t in times:
         if t > 500:
             print(t)
+
     print("median = ", np.median(times))
     print("average = ", np.average(times))
     print("min = ", np.min(times))
